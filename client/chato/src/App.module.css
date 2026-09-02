@@ -1,0 +1,26 @@
+.app {
+  width: 100%;
+  height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+}
+
+.chatLayout {
+  flex: 1;
+  min-height: 0;
+
+  width: 100%;
+  max-width: 1400px;
+
+  margin: 0 auto;
+
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+
+  background: #ffffff;
+
+  overflow: hidden;
+}

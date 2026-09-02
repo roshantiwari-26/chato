@@ -1,0 +1,169 @@
+.chatWindow {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+
+  background: #120c1f;
+}
+
+.emptyWindow {
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  color: #6b7280;
+  text-align: center;
+}
+
+.emptyWindow h2 {
+  margin: 0 0 8px;
+  color: #111827;
+  font-size: 20px;
+}
+
+.emptyWindow p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.chatHeader {
+  height: 64px;
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px 20px;
+
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 50%;
+
+  background: #e5e7eb;
+
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.userInfo {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.userInfo h2 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 16px;
+  font-weight: 600;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userInfo span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.messagesContainer {
+  flex: 1;
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  padding: 20px;
+
+  overflow-y: auto;
+  background: linear-gradient(135deg, #f494c3 0%, #fa9393 100%);
+}
+
+.loading,
+.emptyChat {
+  margin: auto;
+
+  color: #6b7280;
+
+  font-size: 14px;
+  text-align: center;
+}
+
+.messageRow {
+  display: flex;
+  width: 100%;
+}
+
+.messageRowMine {
+  justify-content: flex-end;
+}
+
+.messageRowOther {
+  justify-content: flex-start;
+}
+
+.messageBubble {
+  max-width: min(70%, 500px);
+
+  padding: 10px 14px;
+
+  border-radius: 16px;
+
+  overflow-wrap: anywhere;
+}
+
+.messageBubble p {
+  margin: 0;
+
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.messageBubbleMine {
+  color: #ffffff;
+  background: #4f46e5;
+
+  border-bottom-right-radius: 4px;
+}
+
+.messageBubbleOther {
+  color: #111827;
+  background: #e5e7eb;
+
+  border-bottom-left-radius: 4px;
+}
+
+.messageMeta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.75;
+}

@@ -1,0 +1,40 @@
+:root {
+  --text: black;
+  --round: 8px;
+
+  font: 18px/145% var(Arial);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #f3f4f6;
+}
+
+#root {
+  width: 1126px;
+  max-width: 100%;
+  margin: 0 auto;
+  min-height: 100svh;
+  border-radius: var(--round);
+
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}

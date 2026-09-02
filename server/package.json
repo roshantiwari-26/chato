@@ -1,0 +1,36 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.22.0",
+      "onFail": "download"
+    }
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie": "^2.0.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "joi": "^18.2.5",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.3",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

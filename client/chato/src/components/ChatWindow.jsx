@@ -1,0 +1,335 @@
+import { useEffect, useRef, useState } from "react";
+import MessageInput from "./MessageInput";
+import styles from "./ChatWindow.module.css";
+
+function ChatWindow({
+  conversation,
+  sendMessage,
+  connected,
+  lastMessage,
+  currentUser,
+  subscribeToPresence,
+  unsubscribePresence,
+  sendTypingStart,
+  sendTypingStop,
+}) {
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [otherUserOnline, setOtherUserOnline] = useState(false);
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
+
+  const messagesEndRef = useRef(null);
+
+  const currentUserId =
+    currentUser?._id?.toString() || currentUser?.id?.toString();
+
+  const otherUser = conversation?.participants?.find(
+    (user) => user._id?.toString() !== currentUserId,
+  );
+
+  const conversationId = conversation?._id?.toString();
+  const otherUserId = otherUser?._id?.toString();
+
+  useEffect(() => {
+    if (!conversationId || !otherUserId || !connected) {
+      return;
+    }
+
+    setOtherUserOnline(false);
+
+    subscribeToPresence(otherUserId);
+
+    return () => {
+      unsubscribePresence(otherUserId);
+    };
+  }, [
+    conversationId,
+    otherUserId,
+    connected,
+    subscribeToPresence,
+    unsubscribePresence,
+  ]);
+
+  useEffect(() => {
+    if (!lastMessage || !otherUserId) {
+      return;
+    }
+
+    if (
+      lastMessage.type !== "presence.online" &&
+      lastMessage.type !== "presence.offline"
+    ) {
+      return;
+    }
+
+    const userId = lastMessage.payload?.userId?.toString();
+
+    if (userId !== otherUserId) {
+      return;
+    }
+
+    if (lastMessage.type === "presence.online") {
+      setOtherUserOnline(true);
+    }
+
+    if (lastMessage.type === "presence.offline") {
+      setOtherUserOnline(false);
+    }
+  }, [lastMessage, otherUserId]);
+
+  useEffect(() => {
+    if (!conversation || !currentUser || !otherUser || !lastMessage) {
+      return;
+    }
+
+    const userId = lastMessage.payload?.userId;
+
+    if (userId?.toString() !== otherUser._id?.toString()) {
+      return;
+    }
+
+    if (lastMessage.type === "typing.start") {
+      setOtherUserTyping(true);
+    }
+
+    if (lastMessage.type === "typing.stop") {
+      setOtherUserTyping(false);
+    }
+  }, [lastMessage, conversation, currentUser, otherUser]);
+
+  useEffect(() => {
+    if (!lastMessage || !conversationId) {
+      return;
+    }
+
+    if (lastMessage.type === "message.new") {
+      const message = lastMessage.payload;
+
+      if (!message) {
+        return;
+      }
+
+      if (message.conversationId?.toString() !== conversationId) {
+        return;
+      }
+
+      setMessages((previousMessages) => {
+        const messageId = message.id?.toString();
+
+        const alreadyExists = previousMessages.some(
+          (existingMessage) =>
+            existingMessage.id?.toString() === messageId ||
+            existingMessage._id?.toString() === messageId,
+        );
+
+        if (alreadyExists) {
+          return previousMessages;
+        }
+
+        return [
+          ...previousMessages,
+          {
+            ...message,
+            status: "sent",
+          },
+        ];
+      });
+
+      return;
+    }
+
+    if (lastMessage.type === "message.ack") {
+      const ack = lastMessage.payload;
+
+      if (!ack) {
+        return;
+      }
+
+      if (ack.conversationId?.toString() !== conversationId) {
+        return;
+      }
+
+      setMessages((previousMessages) =>
+        previousMessages.map((message) =>
+          message.clientMessageId?.toString() ===
+          ack.clientMessageId?.toString()
+            ? {
+                ...message,
+                id: ack.messageId,
+                status: "sent",
+                createdAt: ack.createdAt,
+              }
+            : message,
+        ),
+      );
+    }
+  }, [lastMessage, conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchMessages() {
+      try {
+        setLoading(true);
+
+        const response = await fetch(
+          `http://localhost:3000/api/conversations/${conversationId}/messages`,
+          {
+            credentials: "include",
+          },
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message);
+        }
+
+        if (!cancelled) {
+          setMessages(data.messages);
+        }
+      } catch (error) {
+        console.error("Failed to fetch messages:", error);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchMessages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages]);
+
+  function handleSend(text) {
+    if (!conversationId || !currentUserId || !otherUserId) {
+      return;
+    }
+
+    const clientMessageId = crypto.randomUUID();
+
+    const optimisticMessage = {
+      id: clientMessageId,
+      clientMessageId,
+      conversationId,
+      senderId: currentUserId,
+      text,
+      createdAt: new Date().toISOString(),
+      status: "sending",
+    };
+
+    setMessages((previousMessages) => [...previousMessages, optimisticMessage]);
+
+    sendMessage(otherUserId, text, clientMessageId);
+  }
+
+  if (!conversation) {
+    return (
+      <section className={styles.emptyWindow}>
+        <h2>Select a conversation</h2>
+        <p>Choose a chat from the sidebar to start messaging.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className={styles.chatWindow}>
+      <header className={styles.chatHeader}>
+        <div className={styles.avatar}>
+          {otherUser?.username?.charAt(0).toUpperCase()}
+        </div>
+
+        <div className={styles.userInfo}>
+          <h2>{otherUser?.username}</h2>
+
+          {otherUserTyping ? (
+            <span>Typing...</span>
+          ) : otherUserOnline ? (
+            <span>Online</span>
+          ) : (
+            <span>Offline</span>
+          )}
+        </div>
+      </header>
+
+      <div className={styles.messagesContainer}>
+        {loading && <p className={styles.loading}>Loading messages...</p>}
+
+        {!loading && messages.length === 0 && (
+          <p className={styles.emptyChat}>No messages yet.</p>
+        )}
+
+        {messages.map((message) => {
+          const senderId = message.senderId?.toString();
+
+          const isMine = senderId === currentUserId;
+
+          const messageKey =
+            message.id?.toString() ||
+            message._id?.toString() ||
+            message.clientMessageId;
+
+          return (
+            <div
+              key={messageKey}
+              className={`${styles.messageRow} ${
+                isMine ? styles.messageRowMine : styles.messageRowOther
+              }`}
+            >
+              <div
+                className={`${styles.messageBubble} ${
+                  isMine ? styles.messageBubbleMine : styles.messageBubbleOther
+                }`}
+              >
+                <p>{message.text}</p>
+
+                <div className={styles.messageMeta}>
+                  {message.createdAt && (
+                    <span className={styles.messageTime}>
+                      {new Date(message.createdAt).toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  )}
+
+                  {isMine && (
+                    <span className={styles.messageStatus}>
+                      {message.status === "sending" ? "Sending..." : "✓"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      <MessageInput
+        onSend={handleSend}
+        connected={connected}
+        receiverId={otherUserId}
+        sendTypingStart={sendTypingStart}
+        sendTypingStop={sendTypingStop}
+      />
+    </section>
+  );
+}
+
+export default ChatWindow;

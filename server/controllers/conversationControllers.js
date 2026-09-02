@@ -1,0 +1,96 @@
+const mongoose = require("mongoose");
+const Conversation = require("../models/conversationModel");
+const Message = require("../models/messageModel");
+const AppError = require("../config/AppError");
+const { encodeCursor, decodeCursor } = require("../utils/cursor");
+
+async function getMessages(req, res, next) {
+  try {
+    const { conversationId } = req.params;
+
+    const userId = req.user.userId;
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: userId,
+    });
+
+    if (!conversation) {
+      throw new AppError("Conversation not found", 404);
+    }
+
+    let limit = Number(req.query.limit) || 50;
+
+    limit = Math.min(Math.max(limit, 1), 100);
+
+    const query = {
+      conversationId: conversation._id,
+    };
+
+    if (req.query.before) {
+      const cursor = decodeCursor(req.query.before);
+
+      query.$or = [
+        {
+          createdAt: {
+            $lt: new Date(cursor.createdAt),
+          },
+        },
+        {
+          createdAt: new Date(cursor.createdAt),
+          _id: {
+            $lt: new mongoose.Types.ObjectId(cursor.id),
+          },
+        },
+      ];
+    }
+
+    const messages = await Message.find(query)
+      .sort({
+        createdAt: -1,
+        _id: -1,
+      })
+      .limit(limit + 1);
+
+    const hasMore = messages.length > limit;
+
+    if (hasMore) {
+      messages.pop();
+    }
+
+    messages.reverse();
+
+    const nextCursor =
+      hasMore && messages.length > 0 ? encodeCursor(messages[0]) : null;
+
+    res.status(200).json({
+      messages,
+      nextCursor,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getConversations(req, res, next) {
+  try {
+    const userId = req.user.userId;
+
+    const conversations = await Conversation.find({
+      participants: userId,
+    })
+      .populate("participants", "_id username email")
+      .sort({ updatedAt: -1 });
+
+    res.status(200).json({
+      conversations,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = {
+  getMessages,
+  getConversations,
+};

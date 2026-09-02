@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { Routes, Route } from "react-router-dom";
 import { getConversations } from "./api/conversations";
 import useWebSocket from "./hooks/useWebsocket";
 
 import ConversationList from "./components/ConversationList";
 import ChatWindow from "./components/ChatWindow";
 import Header from "./components/Header";
+import Login from "./pages/Login";
 
 import styles from "./App.module.css";
 
@@ -59,30 +61,38 @@ function App() {
   }, []);
 
   return (
-    <div className={styles.app}>
-      <Header />
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/"
+        element={
+          <div className={styles.app}>
+            <Header />
 
-      <main className={styles.chatLayout}>
-        <ConversationList
-          currentUser={currentUser}
-          conversations={conversations}
-          selectedConversationId={selectedConversation?._id}
-          onSelectConversation={setSelectedConversation}
-        />
+            <main className={styles.chatLayout}>
+              <ConversationList
+                currentUser={currentUser}
+                conversations={conversations}
+                selectedConversationId={selectedConversation?._id}
+                onSelectConversation={setSelectedConversation}
+              />
 
-        <ChatWindow
-          currentUser={currentUser}
-          conversation={selectedConversation}
-          sendMessage={sendMessage}
-          connected={connected}
-          lastMessage={lastMessage}
-          subscribeToPresence={subscribeToPresence}
-          unsubscribePresence={unsubscribePresence}
-          sendTypingStart={sendTypingStart}
-          sendTypingStop={sendTypingStop}
-        />
-      </main>
-    </div>
+              <ChatWindow
+                currentUser={currentUser}
+                conversation={selectedConversation}
+                sendMessage={sendMessage}
+                connected={connected}
+                lastMessage={lastMessage}
+                subscribeToPresence={subscribeToPresence}
+                unsubscribePresence={unsubscribePresence}
+                sendTypingStart={sendTypingStart}
+                sendTypingStop={sendTypingStop}
+              />
+            </main>
+          </div>
+        }
+      />
+    </Routes>
   );
 }
 

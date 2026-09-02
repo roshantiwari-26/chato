@@ -1,0 +1,117 @@
+.loginPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%);
+}
+
+.loginCard {
+  width: 100%;
+  max-width: 400px;
+  padding: 36px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 0px 8px white;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.header h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.header span {
+  color: transparent;
+  background: linear-gradient(135deg, #f62a8c 0%, #fe3030 100%);
+  background-clip: text;
+}
+
+.header p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  color: var(--text);
+  background-color: transparent;
+  border-radius: 8px;
+  outline: none;
+  font-size: 15px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.field input:focus {
+  border-color: #ff5858;
+  box-shadow: 0 0 3px #f857a6;
+}
+
+.loginButton {
+  margin-top: 4px;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%);
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.1s;
+}
+
+.loginButton:hover {
+  background: linear-gradient(135deg, #fe2b91 0%, #ed2d2d 100%);
+}
+
+.loginButton:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 480px) {
+  .loginPage {
+    padding: 16px;
+  }
+
+  .loginCard {
+    padding: 28px 22px;
+  }
+
+  .header h1 {
+    font-size: 24px;
+  }
+}

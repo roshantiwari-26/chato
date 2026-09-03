@@ -3,13 +3,52 @@
   height: 60px;
   border-radius: var(--round);
   background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%);
-  padding: 8px;
+  padding: 12px;
   color: aliceblue;
 
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
 .header h1 {
   font-weight: 900;
+}
+
+.header nav span {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 50%;
+
+  background: #e5e7eb;
+
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+
+  cursor: pointer;
+}
+
+/* .header nav span:hover {
+  box-shadow: 0 0 8px goldenrod;
+} */
+
+.header nav a {
+  text-decoration: none;
+  color: #fffffe;
+  padding: 8px;
+  font-size: 18px;
+
+  transition: all ease 0.5s;
+}
+
+.header nav a:hover {
+  text-shadow: 0 0 3px #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
 }

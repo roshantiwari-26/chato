@@ -1,31 +1,37 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import styles from "./Login.module.css";
 
 function Login() {
-  const [credentials, setCredentials] = useState({});
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { login, isAuthenticated } = useAuth();
+
+  const [credentials, setCredentials] = useState({
+    email: "",
+    password: "",
+  });
+
+  const [loading, setLoading] = useState(false);
 
   function handleChange(type, value) {
-    setCredentials({ ...credentials, [type]: value });
+    setCredentials((previousCredentials) => ({
+      ...previousCredentials,
+      [type]: value,
+    }));
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
 
-    const res = await fetch("http://localhost:3000/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify(credentials),
-    });
+    try {
+      setLoading(true);
 
-    const data = await res.json();
-    setIsAuthenticated(true);
-
-    console.log(JSON.stringify(data, null, 2));
+      await login(credentials);
+    } catch (error) {
+      console.error("Login failed:", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (isAuthenticated) {
@@ -39,6 +45,7 @@ function Login() {
           <h1>
             Welcome to <span>ChatO</span>
           </h1>
+
           <p>Login to continue chatting</p>
         </div>
 
@@ -50,8 +57,10 @@ function Login() {
               id="email"
               type="email"
               placeholder="abc123@example.com"
-              onChange={(e) => handleChange("email", e.target.value)}
+              value={credentials.email}
+              onChange={(event) => handleChange("email", event.target.value)}
               required
+              disabled={loading}
             />
           </div>
 
@@ -62,13 +71,19 @@ function Login() {
               id="password"
               type="password"
               placeholder="Enter your password"
-              onChange={(e) => handleChange("password", e.target.value)}
+              value={credentials.password}
+              onChange={(event) => handleChange("password", event.target.value)}
               required
+              disabled={loading}
             />
           </div>
 
-          <button className={styles.loginButton} type="submit">
-            Login
+          <button
+            className={styles.loginButton}
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
       </section>

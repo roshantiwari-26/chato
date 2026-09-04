@@ -254,6 +254,57 @@ function initializeWebSocket(server) {
           return;
         }
 
+        // conversation read receipt
+        if (data.type === "conversation.read") {
+          const { conversationId } = data.payload;
+
+          if (!conversationId) {
+            return;
+          }
+
+          const readAt = new Date();
+
+          await Message.updateMany(
+            {
+              conversationId,
+              receiverId: socket.user.userId,
+              readAt: null,
+            },
+            {
+              $set: {
+                readAt,
+              },
+            },
+          );
+
+          const message = await Message.findOne({
+            conversationId,
+            receiverId: socket.user.userId,
+          }).select("senderId");
+
+          if (!message) {
+            return;
+          }
+
+          const senderSocket = onlineUsers.get(message.senderId.toString());
+
+          if (!senderSocket) {
+            return;
+          }
+
+          senderSocket.send(
+            JSON.stringify({
+              type: "conversation.read",
+              payload: {
+                conversationId,
+                readAt,
+              },
+            }),
+          );
+
+          return;
+        }
+
         // message read receipt
         if (data.type === "message.read") {
           const { messageId } = data.payload;
@@ -323,11 +374,6 @@ function initializeWebSocket(server) {
           senderId,
           receiverId,
         );
-
-        //------------------------------------
-        //Temporary Error Test
-        //------------------------------------
-        throw new Error("TEST MESSAGE FAILURE");
 
         const message = await Message.create({
           conversationId: conversation._id,

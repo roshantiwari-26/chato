@@ -22,6 +22,7 @@ function Home() {
     sendTypingStop,
     sendMessageDelivered,
     sendMessageRead,
+    sendConversationRead,
   } = useWebSocket();
 
   const [conversations, setConversations] = useState([]);
@@ -64,6 +65,7 @@ function Home() {
           sendTypingStop={sendTypingStop}
           sendMessageDelivered={sendMessageDelivered}
           sendMessageRead={sendMessageRead}
+          sendConversationRead={sendConversationRead}
         />
       </main>
     </div>

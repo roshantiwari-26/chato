@@ -14,6 +14,7 @@ function ChatWindow({
   sendTypingStop,
   sendMessageDelivered,
   sendMessageRead,
+  sendConversationRead,
 }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -278,6 +279,32 @@ function ChatWindow({
 
       return;
     }
+
+    //------------------------------------------
+    // CONVERSATION READ
+    //------------------------------------------
+
+    if (lastMessage.type === "conversation.read") {
+      const { conversationId: readConversationId, readAt } =
+        lastMessage.payload;
+
+      if (readConversationId?.toString() !== conversationId?.toString()) {
+        return;
+      }
+
+      setMessages((previousMessages) =>
+        previousMessages.map((message) =>
+          message.senderId?.toString() === currentUserId?.toString()
+            ? {
+                ...message,
+                readAt,
+              }
+            : message,
+        ),
+      );
+
+      return;
+    }
   }, [lastMessage, conversationId, sendMessageDelivered, sendMessageRead]);
 
   // --------------------------------------------------
@@ -326,16 +353,7 @@ function ChatWindow({
         setMessages(fetchedMessages);
 
         // Mark unread received messages as read.
-        fetchedMessages.forEach((message) => {
-          const isReceivedMessage =
-            message.receiverId?.toString() === currentUserId?.toString();
-
-          const isUnread = !message.readAt;
-
-          if (isReceivedMessage && isUnread) {
-            sendMessageRead(message._id);
-          }
-        });
+        sendConversationRead(conversationId);
       } catch (error) {
         console.error("Failed to fetch messages:", error);
       } finally {
@@ -350,7 +368,7 @@ function ChatWindow({
     return () => {
       cancelled = true;
     };
-  }, [conversationId, currentUserId, sendMessageRead]);
+  }, [conversationId, currentUserId, sendConversationRead]);
 
   // --------------------------------------------------
   // AUTO SCROLL

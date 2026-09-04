@@ -172,6 +172,25 @@ function useWebSocket() {
     );
   }, []);
 
+  const sendConversationRead = useCallback((conversationId) => {
+    if (!socketRef.current) {
+      return;
+    }
+
+    if (socketRef.current.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    socketRef.current.send(
+      JSON.stringify({
+        type: "conversation.read",
+        payload: {
+          conversationId,
+        },
+      }),
+    );
+  }, []);
+
   return {
     connected,
     sendMessage,
@@ -182,6 +201,7 @@ function useWebSocket() {
     sendTypingStop,
     sendMessageDelivered,
     sendMessageRead,
+    sendConversationRead,
   };
 }
 

@@ -134,6 +134,44 @@ function useWebSocket() {
     );
   }, []);
 
+  const sendMessageDelivered = useCallback((messageId) => {
+    if (!socketRef.current) {
+      return;
+    }
+
+    if (socketRef.current.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    socketRef.current.send(
+      JSON.stringify({
+        type: "message.delivered",
+        payload: {
+          messageId,
+        },
+      }),
+    );
+  }, []);
+
+  const sendMessageRead = useCallback((messageId) => {
+    if (!socketRef.current) {
+      return;
+    }
+
+    if (socketRef.current.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    socketRef.current.send(
+      JSON.stringify({
+        type: "message.read",
+        payload: {
+          messageId,
+        },
+      }),
+    );
+  }, []);
+
   return {
     connected,
     sendMessage,
@@ -142,6 +180,8 @@ function useWebSocket() {
     unsubscribePresence,
     sendTypingStart,
     sendTypingStop,
+    sendMessageDelivered,
+    sendMessageRead,
   };
 }
 

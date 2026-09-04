@@ -70,7 +70,6 @@ export function AuthProvider({ children }) {
         throw new Error(data.message || "Logout failed");
       }
     } finally {
-      // Clear client-side auth state even if the request fails
       setCurrentUser(null);
       setIsAuthenticated(false);
     }

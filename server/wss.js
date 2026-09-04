@@ -29,6 +29,34 @@ function initializeWebSocket(server) {
     );
   }
 
+  async function deliverPendingMessages(userId) {
+    const pendingMessages = await Message.find({
+      receiverId: userId,
+      deliveredAt: null,
+    });
+
+    for (const message of pendingMessages) {
+      message.deliveredAt = new Date();
+      await message.save();
+
+      const senderSocket = onlineUsers.get(message.senderId.toString());
+
+      if (!senderSocket) {
+        continue;
+      }
+
+      senderSocket.send(
+        JSON.stringify({
+          type: "message.delivered",
+          payload: {
+            messageId: message._id,
+            deliveredAt: message.deliveredAt,
+          },
+        }),
+      );
+    }
+  }
+
   server.on("upgrade", (request, socket, head) => {
     try {
       const cookieHeader = request.headers.cookie;
@@ -61,12 +89,13 @@ function initializeWebSocket(server) {
     }
   });
 
-  wss.on("connection", (socket) => {
+  wss.on("connection", async (socket) => {
     const connectedUserId = socket.user.userId;
 
     console.log("🟢 ONLINE:", socket.user.email);
 
     onlineUsers.set(connectedUserId, socket);
+    await deliverPendingMessages(connectedUserId);
 
     const watchers = presenceWatchers.get(connectedUserId);
 
@@ -182,6 +211,92 @@ function initializeWebSocket(server) {
           return;
         }
 
+        // message delivery receipt
+        if (data.type === "message.delivered") {
+          const { messageId } = data.payload;
+
+          if (!messageId) {
+            return;
+          }
+
+          const message = await Message.findById(messageId);
+
+          if (!message) {
+            return;
+          }
+
+          if (message.senderId.toString() === socket.user.userId.toString()) {
+            return;
+          }
+
+          if (!message.deliveredAt) {
+            message.deliveredAt = new Date();
+            await message.save();
+          }
+
+          const senderSocket = onlineUsers.get(message.senderId.toString());
+
+          if (!senderSocket) {
+            return;
+          }
+
+          senderSocket.send(
+            JSON.stringify({
+              type: "message.delivered",
+              payload: {
+                messageId: message._id,
+                deliveredAt: message.deliveredAt,
+              },
+            }),
+          );
+
+          return;
+        }
+
+        // message read receipt
+        if (data.type === "message.read") {
+          const { messageId } = data.payload;
+
+          if (!messageId) {
+            return;
+          }
+
+          const message = await Message.findById(messageId);
+
+          if (!message) {
+            return;
+          }
+
+          if (message.receiverId.toString() !== socket.user.userId.toString()) {
+            return;
+          }
+
+          if (message.readAt) {
+            return;
+          }
+
+          message.readAt = new Date();
+          await message.save();
+
+          const senderSocket = onlineUsers.get(message.senderId.toString());
+
+          if (!senderSocket) {
+            return;
+          }
+
+          senderSocket.send(
+            JSON.stringify({
+              type: "message.read",
+              payload: {
+                messageId: message._id,
+                readAt: message.readAt,
+              },
+            }),
+          );
+
+          return;
+        }
+
         // message.send
         if (data.type !== "message.send") {
           return;
@@ -210,6 +325,7 @@ function initializeWebSocket(server) {
         const message = await Message.create({
           conversationId: conversation._id,
           senderId,
+          receiverId,
           text,
         });
 

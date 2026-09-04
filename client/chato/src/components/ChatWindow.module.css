@@ -167,3 +167,7 @@
   font-size: 11px;
   opacity: 0.75;
 }
+
+.readStatus {
+  color: rgb(247, 247, 66);
+}

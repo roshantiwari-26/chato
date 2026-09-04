@@ -89,6 +89,14 @@ async function login(req, res, next) {
   }
 }
 
+async function logout(req, res, next) {
+  try {
+    res.clearCookie("accessToken").json({ message: "Logout successfully" });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function me(req, res, next) {
   try {
     const user = await User.findById(req.user.userId).select("-passwordHash");
@@ -114,5 +122,6 @@ async function me(req, res, next) {
 module.exports = {
   register,
   login,
+  logout,
   me,
 };

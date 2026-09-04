@@ -12,6 +12,8 @@ function ChatWindow({
   unsubscribePresence,
   sendTypingStart,
   sendTypingStop,
+  sendMessageDelivered,
+  sendMessageRead,
 }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -29,6 +31,10 @@ function ChatWindow({
 
   const conversationId = conversation?._id?.toString();
   const otherUserId = otherUser?._id?.toString();
+
+  // --------------------------------------------------
+  // PRESENCE
+  // --------------------------------------------------
 
   useEffect(() => {
     if (!conversationId || !otherUserId || !connected) {
@@ -77,6 +83,10 @@ function ChatWindow({
     }
   }, [lastMessage, otherUserId]);
 
+  // --------------------------------------------------
+  // TYPING
+  // --------------------------------------------------
+
   useEffect(() => {
     if (!conversation || !currentUser || !otherUser || !lastMessage) {
       return;
@@ -97,10 +107,40 @@ function ChatWindow({
     }
   }, [lastMessage, conversation, currentUser, otherUser]);
 
+  // --------------------------------------------------
+  // MESSAGE STATUS HELPER
+  // --------------------------------------------------
+
+  function updateMessageStatus(messageId, updates) {
+    setMessages((previousMessages) =>
+      previousMessages.map((message) => {
+        const currentMessageId =
+          message.id?.toString() || message._id?.toString();
+
+        if (currentMessageId !== messageId?.toString()) {
+          return message;
+        }
+
+        return {
+          ...message,
+          ...updates,
+        };
+      }),
+    );
+  }
+
+  // --------------------------------------------------
+  // REAL-TIME MESSAGES + RECEIPTS
+  // --------------------------------------------------
+
   useEffect(() => {
     if (!lastMessage || !conversationId) {
       return;
     }
+
+    // -----------------------------------------------
+    // NEW MESSAGE
+    // -----------------------------------------------
 
     if (lastMessage.type === "message.new") {
       const message = lastMessage.payload;
@@ -130,13 +170,24 @@ function ChatWindow({
           ...previousMessages,
           {
             ...message,
-            status: "sent",
+            status: "delivered",
           },
         ];
       });
 
+      // Receiver has received the message.
+      sendMessageDelivered(message.id);
+
+      // Since this conversation is already open,
+      // consider the message immediately read.
+      sendMessageRead(message.id);
+
       return;
     }
+
+    // -----------------------------------------------
+    // MESSAGE ACK
+    // -----------------------------------------------
 
     if (lastMessage.type === "message.ack") {
       const ack = lastMessage.payload;
@@ -162,8 +213,51 @@ function ChatWindow({
             : message,
         ),
       );
+
+      return;
     }
-  }, [lastMessage, conversationId]);
+
+    // -----------------------------------------------
+    // MESSAGE DELIVERED
+    // -----------------------------------------------
+
+    if (lastMessage.type === "message.delivered") {
+      const { messageId, deliveredAt } = lastMessage.payload || {};
+
+      if (!messageId) {
+        return;
+      }
+
+      updateMessageStatus(messageId, {
+        status: "delivered",
+        deliveredAt,
+      });
+
+      return;
+    }
+
+    // -----------------------------------------------
+    // MESSAGE READ
+    // -----------------------------------------------
+
+    if (lastMessage.type === "message.read") {
+      const { messageId, readAt } = lastMessage.payload || {};
+
+      if (!messageId) {
+        return;
+      }
+
+      updateMessageStatus(messageId, {
+        readAt,
+      });
+
+      return;
+    }
+  }, [lastMessage, conversationId, sendMessageDelivered, sendMessageRead]);
+
+  // --------------------------------------------------
+  // FETCH EXISTING MESSAGES
+  // --------------------------------------------------
 
   useEffect(() => {
     if (!conversationId) {
@@ -190,9 +284,33 @@ function ChatWindow({
           throw new Error(data.message);
         }
 
-        if (!cancelled) {
-          setMessages(data.messages);
+        if (cancelled) {
+          return;
         }
+
+        const fetchedMessages = data.messages.map((message) => ({
+          ...message,
+
+          status: message.readAt
+            ? "read"
+            : message.deliveredAt
+              ? "delivered"
+              : "sent",
+        }));
+
+        setMessages(fetchedMessages);
+
+        // Mark unread received messages as read.
+        fetchedMessages.forEach((message) => {
+          const isReceivedMessage =
+            message.receiverId?.toString() === currentUserId?.toString();
+
+          const isUnread = !message.readAt;
+
+          if (isReceivedMessage && isUnread) {
+            sendMessageRead(message._id);
+          }
+        });
       } catch (error) {
         console.error("Failed to fetch messages:", error);
       } finally {
@@ -207,13 +325,21 @@ function ChatWindow({
     return () => {
       cancelled = true;
     };
-  }, [conversationId]);
+  }, [conversationId, currentUserId, sendMessageRead]);
+
+  // --------------------------------------------------
+  // AUTO SCROLL
+  // --------------------------------------------------
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
     });
   }, [messages]);
+
+  // --------------------------------------------------
+  // SEND MESSAGE
+  // --------------------------------------------------
 
   function handleSend(text) {
     if (!conversationId || !currentUserId || !otherUserId) {
@@ -227,6 +353,7 @@ function ChatWindow({
       clientMessageId,
       conversationId,
       senderId: currentUserId,
+      receiverId: otherUserId,
       text,
       createdAt: new Date().toISOString(),
       status: "sending",
@@ -237,6 +364,10 @@ function ChatWindow({
     sendMessage(otherUserId, text, clientMessageId);
   }
 
+  // --------------------------------------------------
+  // EMPTY STATE
+  // --------------------------------------------------
+
   if (!conversation) {
     return (
       <section className={styles.emptyWindow}>
@@ -245,6 +376,10 @@ function ChatWindow({
       </section>
     );
   }
+
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
 
   return (
     <section className={styles.chatWindow}>
@@ -308,8 +443,18 @@ function ChatWindow({
                   )}
 
                   {isMine && (
-                    <span className={styles.messageStatus}>
-                      {message.status === "sending" ? "Sending..." : "✓"}
+                    <span
+                      className={`${styles.messageStatus} ${
+                        message.readAt ? styles.readStatus : ""
+                      }`}
+                    >
+                      {message.status === "sending"
+                        ? "Sending..."
+                        : message.readAt
+                          ? "✔✔"
+                          : message.deliveredAt
+                            ? "✓✓"
+                            : "✓"}
                     </span>
                   )}
                 </div>

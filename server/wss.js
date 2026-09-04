@@ -106,6 +106,7 @@ function initializeWebSocket(server) {
     }
 
     socket.on("message", async (rawMessage) => {
+      let clientMessageId;
       try {
         const data = JSON.parse(rawMessage.toString());
 
@@ -302,7 +303,8 @@ function initializeWebSocket(server) {
           return;
         }
 
-        const { receiverId, text, clientMessageId } = data.payload;
+        const { receiverId, text } = data.payload;
+        clientMessageId = data.payload?.clientMessageId;
 
         if (!receiverId || !text) {
           socket.send(
@@ -321,6 +323,11 @@ function initializeWebSocket(server) {
           senderId,
           receiverId,
         );
+
+        //------------------------------------
+        //Temporary Error Test
+        //------------------------------------
+        throw new Error("TEST MESSAGE FAILURE");
 
         const message = await Message.create({
           conversationId: conversation._id,
@@ -365,6 +372,9 @@ function initializeWebSocket(server) {
         socket.send(
           JSON.stringify({
             type: "message.error",
+            payload: {
+              clientMessageId,
+            },
             message: "Failed to send message",
           }),
         );

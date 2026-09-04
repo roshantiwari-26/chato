@@ -217,6 +217,31 @@ function ChatWindow({
       return;
     }
 
+    //---------------------------------------------
+    // MESSAGE ERROR
+    //---------------------------------------------
+
+    if (lastMessage.type === "message.error") {
+      const { clientMessageId } = lastMessage.payload || {};
+
+      if (!clientMessageId) {
+        return;
+      }
+
+      setMessages((previousMessages) =>
+        previousMessages.map((message) =>
+          message.clientMessageId?.toString() === clientMessageId.toString()
+            ? {
+                ...message,
+                status: "failed",
+              }
+            : message,
+        ),
+      );
+
+      return;
+    }
+
     // -----------------------------------------------
     // MESSAGE DELIVERED
     // -----------------------------------------------
@@ -450,11 +475,13 @@ function ChatWindow({
                     >
                       {message.status === "sending"
                         ? "Sending..."
-                        : message.readAt
-                          ? "✔✔"
-                          : message.deliveredAt
-                            ? "✓✓"
-                            : "✓"}
+                        : message.status === "failed"
+                          ? "Failed"
+                          : message.readAt
+                            ? "✔✔"
+                            : message.deliveredAt
+                              ? "✓✓"
+                              : "✓"}
                     </span>
                   )}
                 </div>

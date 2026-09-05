@@ -5,6 +5,7 @@ function useWebSocket() {
 
   const [connected, setConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState(null);
+  const [unreadCounts, setUnreadCounts] = useState({});
 
   useEffect(() => {
     const socket = new WebSocket("ws://localhost:3000");
@@ -18,7 +19,18 @@ function useWebSocket() {
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
+
       setLastMessage(data);
+
+      if (data.type === "conversation.unread") {
+        const counts = {};
+
+        data.payload.counts.forEach((item) => {
+          counts[item._id.toString()] = item.count;
+        });
+
+        setUnreadCounts(counts);
+      }
     };
 
     socket.onerror = (error) => {
@@ -191,10 +203,19 @@ function useWebSocket() {
     );
   }, []);
 
+  const markConversationUnreadAsRead = useCallback((conversationId) => {
+    setUnreadCounts((previous) => ({
+      ...previous,
+      [conversationId]: 0,
+    }));
+  }, []);
+
   return {
     connected,
     sendMessage,
     lastMessage,
+    unreadCounts,
+    markConversationUnreadAsRead,
     subscribeToPresence,
     unsubscribePresence,
     sendTypingStart,

@@ -1,4 +1,5 @@
 const WebSocket = require("ws");
+const mongoose = require("mongoose");
 const cookie = require("cookie");
 const jwt = require("jsonwebtoken");
 
@@ -57,6 +58,25 @@ function initializeWebSocket(server) {
     }
   }
 
+  async function getUnreadCounts(userId) {
+    const unreadMessages = await Message.aggregate([
+      {
+        $match: {
+          receiverId: new mongoose.Types.ObjectId(userId),
+          readAt: null,
+        },
+      },
+      {
+        $group: {
+          _id: "$conversationId",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    return unreadMessages;
+  }
+
   server.on("upgrade", (request, socket, head) => {
     try {
       const cookieHeader = request.headers.cookie;
@@ -96,6 +116,17 @@ function initializeWebSocket(server) {
 
     onlineUsers.set(connectedUserId, socket);
     await deliverPendingMessages(connectedUserId);
+
+    const unreadCounts = await getUnreadCounts(connectedUserId);
+
+    socket.send(
+      JSON.stringify({
+        type: "conversation.unread",
+        payload: {
+          counts: unreadCounts,
+        },
+      }),
+    );
 
     const watchers = presenceWatchers.get(connectedUserId);
 

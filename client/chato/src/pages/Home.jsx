@@ -16,6 +16,8 @@ function Home() {
     connected,
     sendMessage,
     lastMessage,
+    unreadCounts,
+    markConversationUnreadAsRead,
     subscribeToPresence,
     unsubscribePresence,
     sendTypingStart,
@@ -51,6 +53,8 @@ function Home() {
           conversations={conversations}
           selectedConversationId={selectedConversation?._id}
           onSelectConversation={setSelectedConversation}
+          unreadCounts={unreadCounts}
+          markConversationUnreadAsRead={markConversationUnreadAsRead}
         />
 
         <ChatWindow

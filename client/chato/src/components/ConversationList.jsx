@@ -5,6 +5,8 @@ function ConversationList({
   onSelectConversation,
   currentUser,
   selectedConversationId,
+  unreadCounts,
+  markConversationUnreadAsRead,
 }) {
   return (
     <aside className={styles.conversationList}>
@@ -29,15 +31,27 @@ function ConversationList({
                 className={`${styles.conversationItem} ${
                   selected ? styles.selected : ""
                 }`}
-                onClick={() => onSelectConversation(conversation)}
+                onClick={() => {
+                  onSelectConversation(conversation);
+                  markConversationUnreadAsRead(conversation._id);
+                }}
               >
                 <div className={styles.avatar}>
                   {otherUser?.username?.charAt(0).toUpperCase()}
                 </div>
 
                 <div className={styles.conversationInfo}>
-                  <strong>{otherUser?.username}</strong>
-                  <span>{otherUser?.email}</span>
+                  <div className={styles.conversationTop}>
+                    <strong>{otherUser?.username}</strong>
+
+                    {unreadCounts?.[conversation._id] > 0 && (
+                      <span className={styles.unreadCount}>
+                        {unreadCounts[conversation._id]}
+                      </span>
+                    )}
+                  </div>
+
+                  <span className={styles.email}>{otherUser?.email}</span>
                 </div>
               </button>
             );

@@ -2,12 +2,25 @@ import { useEffect, useRef, useState, useCallback } from "react";
 
 function useWebSocket() {
   const socketRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
+  const shouldReconnectRef = useRef(true);
 
   const [connected, setConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState(null);
   const [unreadCounts, setUnreadCounts] = useState({});
 
   useEffect(() => {
+    connect();
+
+    return () => {
+      shouldReconnectRef.current = false;
+      socketRef.current?.close();
+      socketRef.current = null;
+      clearTimeout(reconnectTimerRef.current);
+    };
+  }, []);
+
+  function connect() {
     const socket = new WebSocket("ws://localhost:3000");
 
     socketRef.current = socket;
@@ -40,13 +53,16 @@ function useWebSocket() {
     socket.onclose = () => {
       console.log("🔴 WebSocket disconnected");
       setConnected(false);
-    };
 
-    return () => {
-      socket.close();
-      socketRef.current = null;
+      if (!shouldReconnectRef.current) {
+        return;
+      }
+
+      reconnectTimerRef.current = setTimeout(() => {
+        connect();
+      }, 2000);
     };
-  }, []);
+  }
 
   function sendMessage(receiverId, text, clientMessageId) {
     if (!socketRef.current) {

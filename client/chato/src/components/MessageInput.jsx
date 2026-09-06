@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 import styles from "./MessageInput.module.css";
 
 function MessageInput({
@@ -8,6 +8,11 @@ function MessageInput({
   sendTypingStart,
   sendTypingStop,
 }) {
+  // --------------------------------
+  // Refactoring Log
+  // --------------------------------
+  console.log("⌨️ MessageInput render");
+
   const [text, setText] = useState("");
 
   const typingTimeoutRef = useRef(null);
@@ -94,4 +99,4 @@ function MessageInput({
   );
 }
 
-export default MessageInput;
+export default memo(MessageInput);

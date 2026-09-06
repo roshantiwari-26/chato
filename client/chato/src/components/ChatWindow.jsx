@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import MessageInput from "./MessageInput";
+import MessageList from "./MessageList";
 import styles from "./ChatWindow.module.css";
 
 function ChatWindow({
@@ -21,8 +22,6 @@ function ChatWindow({
   const [otherUserOnline, setOtherUserOnline] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
 
-  const messagesEndRef = useRef(null);
-
   const currentUserId =
     currentUser?._id?.toString() || currentUser?.id?.toString();
 
@@ -32,10 +31,6 @@ function ChatWindow({
 
   const conversationId = conversation?._id?.toString();
   const otherUserId = otherUser?._id?.toString();
-
-  // --------------------------------------------------
-  // PRESENCE
-  // --------------------------------------------------
 
   useEffect(() => {
     if (!conversationId || !otherUserId || !connected) {
@@ -84,10 +79,6 @@ function ChatWindow({
     }
   }, [lastMessage, otherUserId]);
 
-  // --------------------------------------------------
-  // TYPING
-  // --------------------------------------------------
-
   useEffect(() => {
     if (!conversation || !currentUser || !otherUser || !lastMessage) {
       return;
@@ -108,10 +99,6 @@ function ChatWindow({
     }
   }, [lastMessage, conversation, currentUser, otherUser]);
 
-  // --------------------------------------------------
-  // MESSAGE STATUS HELPER
-  // --------------------------------------------------
-
   function updateMessageStatus(messageId, updates) {
     setMessages((previousMessages) =>
       previousMessages.map((message) => {
@@ -130,18 +117,10 @@ function ChatWindow({
     );
   }
 
-  // --------------------------------------------------
-  // REAL-TIME MESSAGES + RECEIPTS
-  // --------------------------------------------------
-
   useEffect(() => {
     if (!lastMessage || !conversationId) {
       return;
     }
-
-    // -----------------------------------------------
-    // NEW MESSAGE
-    // -----------------------------------------------
 
     if (lastMessage.type === "message.new") {
       const message = lastMessage.payload;
@@ -179,16 +158,10 @@ function ChatWindow({
       // Receiver has received the message.
       sendMessageDelivered(message.id);
 
-      // Since this conversation is already open,
-      // consider the message immediately read.
       sendMessageRead(message.id);
 
       return;
     }
-
-    // -----------------------------------------------
-    // MESSAGE ACK
-    // -----------------------------------------------
 
     if (lastMessage.type === "message.ack") {
       const ack = lastMessage.payload;
@@ -218,10 +191,6 @@ function ChatWindow({
       return;
     }
 
-    //---------------------------------------------
-    // MESSAGE ERROR
-    //---------------------------------------------
-
     if (lastMessage.type === "message.error") {
       const { clientMessageId } = lastMessage.payload || {};
 
@@ -243,10 +212,6 @@ function ChatWindow({
       return;
     }
 
-    // -----------------------------------------------
-    // MESSAGE DELIVERED
-    // -----------------------------------------------
-
     if (lastMessage.type === "message.delivered") {
       const { messageId, deliveredAt } = lastMessage.payload || {};
 
@@ -262,10 +227,6 @@ function ChatWindow({
       return;
     }
 
-    // -----------------------------------------------
-    // MESSAGE READ
-    // -----------------------------------------------
-
     if (lastMessage.type === "message.read") {
       const { messageId, readAt } = lastMessage.payload || {};
 
@@ -279,10 +240,6 @@ function ChatWindow({
 
       return;
     }
-
-    //------------------------------------------
-    // CONVERSATION READ
-    //------------------------------------------
 
     if (lastMessage.type === "conversation.read") {
       const { conversationId: readConversationId, readAt } =
@@ -306,10 +263,6 @@ function ChatWindow({
       return;
     }
   }, [lastMessage, conversationId, sendMessageDelivered, sendMessageRead]);
-
-  // --------------------------------------------------
-  // FETCH EXISTING MESSAGES
-  // --------------------------------------------------
 
   useEffect(() => {
     if (!conversationId) {
@@ -370,20 +323,6 @@ function ChatWindow({
     };
   }, [conversationId, currentUserId, sendConversationRead]);
 
-  // --------------------------------------------------
-  // AUTO SCROLL
-  // --------------------------------------------------
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }, [messages]);
-
-  // --------------------------------------------------
-  // SEND MESSAGE
-  // --------------------------------------------------
-
   function handleSend(text) {
     if (!conversationId || !currentUserId || !otherUserId) {
       return;
@@ -407,10 +346,6 @@ function ChatWindow({
     sendMessage(otherUserId, text, clientMessageId);
   }
 
-  // --------------------------------------------------
-  // EMPTY STATE
-  // --------------------------------------------------
-
   if (!conversation) {
     return (
       <section className={styles.emptyWindow}>
@@ -419,10 +354,6 @@ function ChatWindow({
       </section>
     );
   }
-
-  // --------------------------------------------------
-  // UI
-  // --------------------------------------------------
 
   return (
     <section className={styles.chatWindow}>
@@ -450,65 +381,7 @@ function ChatWindow({
         {!loading && messages.length === 0 && (
           <p className={styles.emptyChat}>No messages yet.</p>
         )}
-
-        {messages.map((message) => {
-          const senderId = message.senderId?.toString();
-
-          const isMine = senderId === currentUserId;
-
-          const messageKey =
-            message.id?.toString() ||
-            message._id?.toString() ||
-            message.clientMessageId;
-
-          return (
-            <div
-              key={messageKey}
-              className={`${styles.messageRow} ${
-                isMine ? styles.messageRowMine : styles.messageRowOther
-              }`}
-            >
-              <div
-                className={`${styles.messageBubble} ${
-                  isMine ? styles.messageBubbleMine : styles.messageBubbleOther
-                }`}
-              >
-                <p>{message.text}</p>
-
-                <div className={styles.messageMeta}>
-                  {message.createdAt && (
-                    <span className={styles.messageTime}>
-                      {new Date(message.createdAt).toLocaleTimeString([], {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  )}
-
-                  {isMine && (
-                    <span
-                      className={`${styles.messageStatus} ${
-                        message.readAt ? styles.readStatus : ""
-                      }`}
-                    >
-                      {message.status === "sending"
-                        ? "Sending..."
-                        : message.status === "failed"
-                          ? "Failed"
-                          : message.readAt
-                            ? "✔✔"
-                            : message.deliveredAt
-                              ? "✓✓"
-                              : "✓"}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        <div ref={messagesEndRef} />
+        <MessageList messages={messages} currentUserId={currentUserId} />
       </div>
 
       <MessageInput

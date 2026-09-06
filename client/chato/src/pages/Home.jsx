@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { getConversations } from "../api/conversations";
+import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import useWebSocket from "../hooks/useWebsocket";
 
@@ -10,6 +9,7 @@ import Header from "../components/Header";
 import styles from "../App.module.css";
 
 function Home() {
+  console.log("🏠 Home render");
   const { currentUser } = useAuth();
 
   const {
@@ -27,21 +27,7 @@ function Home() {
     sendConversationRead,
   } = useWebSocket();
 
-  const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
-
-  useEffect(() => {
-    async function loadConversations() {
-      try {
-        const data = await getConversations();
-        setConversations(data.conversations);
-      } catch (error) {
-        console.error("Failed to load conversations:", error);
-      }
-    }
-
-    loadConversations();
-  }, []);
 
   return (
     <div className={styles.app}>
@@ -50,7 +36,6 @@ function Home() {
       <main className={styles.chatLayout}>
         <ConversationList
           currentUser={currentUser}
-          conversations={conversations}
           selectedConversationId={selectedConversation?._id}
           onSelectConversation={setSelectedConversation}
           unreadCounts={unreadCounts}

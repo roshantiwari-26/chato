@@ -1,13 +1,31 @@
+import { memo, useState, useEffect } from "react";
 import styles from "./ConversationList.module.css";
+import { getConversations } from "../api/conversations";
 
 function ConversationList({
-  conversations,
   onSelectConversation,
   currentUser,
   selectedConversationId,
   unreadCounts,
   markConversationUnreadAsRead,
 }) {
+  console.log("💬 ConversationList rendered");
+
+  const [conversations, setConversations] = useState([]);
+
+  useEffect(() => {
+    async function loadConversations() {
+      try {
+        const data = await getConversations();
+        setConversations(data.conversations);
+      } catch (error) {
+        console.error("Failed to load conversations:", error);
+      }
+    }
+
+    loadConversations();
+  }, []);
+
   return (
     <aside className={styles.conversationList}>
       <div className={styles.conversationListHeader}>
@@ -62,4 +80,4 @@ function ConversationList({
   );
 }
 
-export default ConversationList;
+export default memo(ConversationList);

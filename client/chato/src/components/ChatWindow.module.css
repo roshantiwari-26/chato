@@ -93,15 +93,17 @@
 .messagesContainer {
   flex: 1;
   min-height: 0;
-
   display: flex;
   flex-direction: column;
-  gap: 10px;
-
   padding: 20px;
-
   overflow-y: auto;
   background: linear-gradient(135deg, #f494c3 0%, #fa9393 100%);
+}
+
+.messagesContainer > article {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .loading,
@@ -166,6 +168,10 @@
   margin-top: 4px;
   font-size: 11px;
   opacity: 0.75;
+}
+
+.messageStatus {
+  letter-spacing: -2px;
 }
 
 .readStatus {

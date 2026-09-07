@@ -2,9 +2,7 @@ import { useRef, useEffect, memo } from "react";
 
 import styles from "./ChatWindow.module.css";
 
-function MessageList({ messages, currentUserId }) {
-  console.log("📨 MessageList rendered");
-
+function MessageList({ messages, currentUserId, sendMessageDelete }) {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -19,6 +17,7 @@ function MessageList({ messages, currentUserId }) {
         const senderId = message.senderId?.toString();
 
         const isMine = senderId === currentUserId;
+        const isDeleted = Boolean(message.deletedAt);
 
         const messageKey =
           message.id?.toString() ||
@@ -37,7 +36,13 @@ function MessageList({ messages, currentUserId }) {
                 isMine ? styles.messageBubbleMine : styles.messageBubbleOther
               }`}
             >
-              <p>{message.text}</p>
+              {isDeleted ? (
+                <p className={styles.deletedMessage}>
+                  This message was deleted
+                </p>
+              ) : (
+                <p>{message.text}</p>
+              )}
 
               <div className={styles.messageMeta}>
                 {message.createdAt && (
@@ -67,6 +72,19 @@ function MessageList({ messages, currentUserId }) {
                   </span>
                 )}
               </div>
+              {isMine && !isDeleted && (
+                <button
+                  type="button"
+                  className={styles.deleteButton}
+                  onClick={() => sendMessageDelete(messageKey)}
+                  aria-label="Delete message"
+                  title="Delete message"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 6h2v9h-2V9Zm4 0h2v9h-2V9ZM6 9h2v9H6V9Zm-1 0h14l-1 11H6L5 9Z" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         );

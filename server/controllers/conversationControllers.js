@@ -60,11 +60,23 @@ async function getMessages(req, res, next) {
 
     messages.reverse();
 
+    const safeMessages = messages.map((message) => ({
+      _id: message._id,
+      conversationId: message.conversationId,
+      senderId: message.senderId,
+      receiverId: message.receiverId,
+      text: message.deletedAt ? null : message.text,
+      createdAt: message.createdAt,
+      deliveredAt: message.deliveredAt,
+      readAt: message.readAt,
+      deletedAt: message.deletedAt,
+    }));
+
     const nextCursor =
       hasMore && messages.length > 0 ? encodeCursor(messages[0]) : null;
 
     res.status(200).json({
-      messages,
+      messages: safeMessages,
       nextCursor,
     });
   } catch (error) {

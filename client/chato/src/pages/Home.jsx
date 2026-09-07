@@ -9,7 +9,6 @@ import Header from "../components/Header";
 import styles from "../App.module.css";
 
 function Home() {
-  console.log("🏠 Home render");
   const { currentUser } = useAuth();
 
   const {
@@ -25,6 +24,7 @@ function Home() {
     sendMessageDelivered,
     sendMessageRead,
     sendConversationRead,
+    sendMessageDelete,
   } = useWebSocket();
 
   const [selectedConversation, setSelectedConversation] = useState(null);
@@ -55,6 +55,7 @@ function Home() {
           sendMessageDelivered={sendMessageDelivered}
           sendMessageRead={sendMessageRead}
           sendConversationRead={sendConversationRead}
+          sendMessageDelete={sendMessageDelete}
         />
       </main>
     </div>

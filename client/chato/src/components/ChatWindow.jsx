@@ -16,6 +16,7 @@ function ChatWindow({
   sendMessageDelivered,
   sendMessageRead,
   sendConversationRead,
+  sendMessageDelete,
 }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -262,6 +263,34 @@ function ChatWindow({
 
       return;
     }
+
+    if (lastMessage.type === "message.deleted") {
+      const { messageId, deletedAt } = lastMessage.payload || {};
+
+      if (!messageId) {
+        return;
+      }
+
+      setMessages((previousMessages) =>
+        previousMessages.map((message) => {
+          const currentMessageId =
+            message.id?.toString() ||
+            message._id?.toString() ||
+            message.clientMessageId;
+
+          if (currentMessageId !== messageId.toString()) {
+            return message;
+          }
+
+          return {
+            ...message,
+            deletedAt,
+          };
+        }),
+      );
+
+      return;
+    }
   }, [lastMessage, conversationId, sendMessageDelivered, sendMessageRead]);
 
   useEffect(() => {
@@ -381,7 +410,11 @@ function ChatWindow({
         {!loading && messages.length === 0 && (
           <p className={styles.emptyChat}>No messages yet.</p>
         )}
-        <MessageList messages={messages} currentUserId={currentUserId} />
+        <MessageList
+          messages={messages}
+          currentUserId={currentUserId}
+          sendMessageDelete={sendMessageDelete}
+        />
       </div>
 
       <MessageInput

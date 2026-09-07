@@ -226,6 +226,26 @@ function useWebSocket() {
     }));
   }, []);
 
+  const sendMessageDelete = useCallback((messageId) => {
+    if (!socketRef.current) {
+      return;
+    }
+
+    if (socketRef.current.readyState !== WebSocket.OPEN) {
+      console.warn("WebSocket is not connected");
+      return;
+    }
+
+    socketRef.current.send(
+      JSON.stringify({
+        type: "message.delete",
+        payload: {
+          messageId,
+        },
+      }),
+    );
+  }, []);
+
   return {
     connected,
     sendMessage,
@@ -239,6 +259,7 @@ function useWebSocket() {
     sendMessageDelivered,
     sendMessageRead,
     sendConversationRead,
+    sendMessageDelete,
   };
 }
 

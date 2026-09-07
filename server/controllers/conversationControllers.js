@@ -2,7 +2,33 @@ const mongoose = require("mongoose");
 const Conversation = require("../models/conversationModel");
 const Message = require("../models/messageModel");
 const AppError = require("../config/AppError");
+const { findOrCreateConversation } = require("../services/conversationService");
 const { encodeCursor, decodeCursor } = require("../utils/cursor");
+
+async function createConversation(req, res, next) {
+  try {
+    const { userId } = req.body;
+    const currentUserId = req.user.userId;
+
+    if (!userId) {
+      throw new AppError("User ID is required", 400);
+    }
+
+    if (currentUserId.toString() === userId.toString()) {
+      throw new AppError("You cannot start a conversation with yourself", 400);
+    }
+
+    const conversation = await findOrCreateConversation(currentUserId, userId);
+
+    await conversation.populate("participants", "_id username email");
+
+    res.status(200).json({
+      conversation,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
 async function getMessages(req, res, next) {
   try {
@@ -103,6 +129,7 @@ async function getConversations(req, res, next) {
 }
 
 module.exports = {
+  createConversation,
   getMessages,
   getConversations,
 };

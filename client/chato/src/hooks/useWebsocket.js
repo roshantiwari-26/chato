@@ -21,12 +21,11 @@ function useWebSocket() {
   }, []);
 
   function connect() {
-    const socket = new WebSocket("ws://localhost:3000");
+    const socket = new WebSocket(import.meta.env.VITE_WS_URL);
 
     socketRef.current = socket;
 
     socket.onopen = () => {
-      console.log("🟢 WebSocket connected");
       setConnected(true);
     };
 
@@ -51,7 +50,6 @@ function useWebSocket() {
     };
 
     socket.onclose = () => {
-      console.log("🔴 WebSocket disconnected");
       setConnected(false);
 
       if (!shouldReconnectRef.current) {

@@ -7,13 +7,16 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Check existing login session
+  // Checking existing login session
   useEffect(() => {
     async function checkAuthentication() {
       try {
-        const response = await fetch("http://localhost:3000/api/auth/me", {
-          credentials: "include",
-        });
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/auth/me`,
+          {
+            credentials: "include",
+          },
+        );
 
         const data = await response.json();
 
@@ -36,34 +39,43 @@ export function AuthProvider({ children }) {
 
   // Login
   async function login(credentials) {
-    const response = await fetch("http://localhost:3000/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify(credentials),
-    });
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(credentials),
+        },
+      );
 
-    const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+      const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || "Login failed");
+      setCurrentUser(data.user);
+      setIsAuthenticated(true);
+
+      return data;
+    } catch (err) {
+      console.log(err.message);
     }
-
-    setCurrentUser(data.user);
-    setIsAuthenticated(true);
-
-    return data;
   }
 
   // Logout
   async function logout() {
     try {
-      const response = await fetch("http://localhost:3000/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/auth/logout`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
 
       if (!response.ok) {
         const data = await response.json();

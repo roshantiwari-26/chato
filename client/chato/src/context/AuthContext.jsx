@@ -37,6 +37,33 @@ export function AuthProvider({ children }) {
     checkAuthentication();
   }, []);
 
+  // Register
+  async function register(credentials) {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/auth/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(credentials),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Login
   async function login(credentials) {
     try {
@@ -52,17 +79,17 @@ export function AuthProvider({ children }) {
         },
       );
 
+      const data = await response.json();
       if (!response.ok) {
         throw new Error(data.message || "Login failed");
       }
-      const data = await response.json();
 
       setCurrentUser(data.user);
       setIsAuthenticated(true);
 
       return data;
-    } catch (err) {
-      console.log(err.message);
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -91,6 +118,7 @@ export function AuthProvider({ children }) {
     currentUser,
     isAuthenticated,
     checkingAuth,
+    register,
     login,
     logout,
   };

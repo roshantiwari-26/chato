@@ -45,6 +45,19 @@ function MessageList({ messages, currentUserId, sendMessageDelete }) {
               )}
 
               <div className={styles.messageMeta}>
+                {isMine && !isDeleted && (
+                  <button
+                    type="button"
+                    className={styles.deleteButton}
+                    onClick={() => sendMessageDelete(messageKey)}
+                    aria-label="Delete message"
+                    title="Delete message"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 6h2v9h-2V9Zm4 0h2v9h-2V9ZM6 9h2v9H6V9Zm-1 0h14l-1 11H6L5 9Z" />
+                    </svg>
+                  </button>
+                )}
                 {message.createdAt && (
                   <span className={styles.messageTime}>
                     {new Date(message.createdAt).toLocaleTimeString([], {
@@ -72,19 +85,6 @@ function MessageList({ messages, currentUserId, sendMessageDelete }) {
                   </span>
                 )}
               </div>
-              {isMine && !isDeleted && (
-                <button
-                  type="button"
-                  className={styles.deleteButton}
-                  onClick={() => sendMessageDelete(messageKey)}
-                  aria-label="Delete message"
-                  title="Delete message"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 6h2v9h-2V9Zm4 0h2v9h-2V9ZM6 9h2v9H6V9Zm-1 0h14l-1 11H6L5 9Z" />
-                  </svg>
-                </button>
-              )}
             </div>
           </div>
         );

@@ -10,6 +10,22 @@ import styles from "../App.module.css";
 
 function Home() {
   const { currentUser } = useAuth();
+  const [selectedConversation, setSelectedConversation] = useState(null);
+
+  const {
+    connected,
+    sendMessage,
+    lastMessage,
+    unreadCounts,
+    markConversationUnreadAsRead,
+    subscribeToPresence,
+    unsubscribePresence,
+    sendTypingStart,
+    sendTypingStop,
+    sendMessageRead,
+    sendConversationRead,
+    sendMessageDelete,
+  } = useWebSocket(selectedConversation?._id);
 
   async function handleStartConversation(user) {
     try {
@@ -39,24 +55,6 @@ function Home() {
     }
   }
 
-  const {
-    connected,
-    sendMessage,
-    lastMessage,
-    unreadCounts,
-    markConversationUnreadAsRead,
-    subscribeToPresence,
-    unsubscribePresence,
-    sendTypingStart,
-    sendTypingStop,
-    sendMessageDelivered,
-    sendMessageRead,
-    sendConversationRead,
-    sendMessageDelete,
-  } = useWebSocket();
-
-  const [selectedConversation, setSelectedConversation] = useState(null);
-
   return (
     <div className={styles.app}>
       <Header currentUser={currentUser} />
@@ -81,7 +79,6 @@ function Home() {
           unsubscribePresence={unsubscribePresence}
           sendTypingStart={sendTypingStart}
           sendTypingStop={sendTypingStop}
-          sendMessageDelivered={sendMessageDelivered}
           sendMessageRead={sendMessageRead}
           sendConversationRead={sendConversationRead}
           sendMessageDelete={sendMessageDelete}

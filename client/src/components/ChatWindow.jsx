@@ -13,7 +13,6 @@ function ChatWindow({
   unsubscribePresence,
   sendTypingStart,
   sendTypingStop,
-  sendMessageDelivered,
   sendMessageRead,
   sendConversationRead,
   sendMessageDelete,
@@ -156,9 +155,6 @@ function ChatWindow({
         ];
       });
 
-      // Receiver has received the message.
-      sendMessageDelivered(message.id);
-
       sendMessageRead(message.id);
 
       return;
@@ -291,7 +287,7 @@ function ChatWindow({
 
       return;
     }
-  }, [lastMessage, conversationId, sendMessageDelivered, sendMessageRead]);
+  }, [lastMessage, conversationId, sendMessageRead]);
 
   useEffect(() => {
     if (!conversationId) {

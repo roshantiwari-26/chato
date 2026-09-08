@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
-function useWebSocket() {
+function useWebSocket(activeConversationId) {
   const socketRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const shouldReconnectRef = useRef(true);
 
+  const activeConversationIdRef = useRef(null);
+
   const [connected, setConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState(null);
   const [unreadCounts, setUnreadCounts] = useState({});
+
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId?.toString() || null;
+  }, [activeConversationId]);
 
   useEffect(() => {
     connect();
@@ -31,6 +37,32 @@ function useWebSocket() {
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
+
+      if (data.type === "message.new") {
+        const messageId = data.payload?.id;
+        const conversationId = data.payload?.conversationId.toString();
+
+        if (messageId && socket.readyState === WebSocket.OPEN) {
+          socket.send(
+            JSON.stringify({
+              type: "message.delivered",
+              payload: {
+                messageId,
+              },
+            }),
+          );
+        }
+
+        if (
+          conversationId &&
+          conversationId !== activeConversationIdRef.current
+        ) {
+          setUnreadCounts((previous) => ({
+            ...previous,
+            [conversationId]: (previous[conversationId] || 0) + 1,
+          }));
+        }
+      }
 
       setLastMessage(data);
 
@@ -160,25 +192,6 @@ function useWebSocket() {
     );
   }, []);
 
-  const sendMessageDelivered = useCallback((messageId) => {
-    if (!socketRef.current) {
-      return;
-    }
-
-    if (socketRef.current.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    socketRef.current.send(
-      JSON.stringify({
-        type: "message.delivered",
-        payload: {
-          messageId,
-        },
-      }),
-    );
-  }, []);
-
   const sendMessageRead = useCallback((messageId) => {
     if (!socketRef.current) {
       return;
@@ -254,7 +267,6 @@ function useWebSocket() {
     unsubscribePresence,
     sendTypingStart,
     sendTypingStop,
-    sendMessageDelivered,
     sendMessageRead,
     sendConversationRead,
     sendMessageDelete,

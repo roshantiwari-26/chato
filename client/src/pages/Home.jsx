@@ -11,6 +11,34 @@ import styles from "../App.module.css";
 function Home() {
   const { currentUser } = useAuth();
 
+  async function handleStartConversation(user) {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/conversations`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            userId: user._id,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to start conversation");
+      }
+
+      setSelectedConversation(data.conversation);
+    } catch (error) {
+      console.error("Failed to start conversation:", error);
+    }
+  }
+
   const {
     connected,
     sendMessage,
@@ -40,6 +68,7 @@ function Home() {
           onSelectConversation={setSelectedConversation}
           unreadCounts={unreadCounts}
           markConversationUnreadAsRead={markConversationUnreadAsRead}
+          onStartConversation={handleStartConversation}
         />
 
         <ChatWindow

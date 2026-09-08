@@ -1,7 +1,10 @@
 export async function getConversations() {
-  const response = await fetch(`http://localhost:3000/api/conversations`, {
-    credentials: "include",
-  });
+  const response = await fetch(
+    `${import.meta.env.VITE_API_URL}/conversations`,
+    {
+      credentials: "include",
+    },
+  );
 
   if (!response.ok) {
     throw new Error("Failed to fetch conversations");
@@ -23,7 +26,7 @@ export async function getMessages(
   }
 
   const response = await fetch(
-    `${API_URL}/conversations/${conversationId}/messages?${params}`,
+    `${import.meta.env.VITE_API_URL}/conversations/${conversationId}/messages?${params}`,
     {
       credentials: "include",
     },

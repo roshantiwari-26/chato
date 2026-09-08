@@ -20,7 +20,7 @@ app.get("/", (req, res) => {
 });
 app.use("/api/auth", authRoutes);
 app.use("/api/conversations", conversationRoutes);
-app.use("/users", userRoutes);
+app.use("/api/users", userRoutes);
 
 app.use(errorMiddleware);
 module.exports = app;

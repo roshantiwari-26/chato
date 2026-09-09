@@ -59,7 +59,11 @@ function Home() {
     <div className={styles.app}>
       <Header currentUser={currentUser} />
 
-      <main className={styles.chatLayout}>
+      <main
+        className={`${styles.chatLayout} ${
+          selectedConversation ? styles.chatSelected : ""
+        }`}
+      >
         <ConversationList
           currentUser={currentUser}
           selectedConversationId={selectedConversation?._id}
@@ -82,6 +86,7 @@ function Home() {
           sendMessageRead={sendMessageRead}
           sendConversationRead={sendConversationRead}
           sendMessageDelete={sendMessageDelete}
+          onBack={() => setSelectedConversation(null)}
         />
       </main>
     </div>

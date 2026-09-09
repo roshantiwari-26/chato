@@ -76,3 +76,10 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+@media (max-width: 768px) {
+  .messageInput {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+}

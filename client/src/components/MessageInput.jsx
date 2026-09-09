@@ -8,11 +8,6 @@ function MessageInput({
   sendTypingStart,
   sendTypingStop,
 }) {
-  // --------------------------------
-  // Refactoring Log
-  // --------------------------------
-  console.log("⌨️ MessageInput render");
-
   const [text, setText] = useState("");
 
   const typingTimeoutRef = useRef(null);

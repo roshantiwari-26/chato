@@ -24,3 +24,17 @@
 
   overflow: hidden;
 }
+
+@media (max-width: 768px) {
+  .chatLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .chatLayout.chatSelected > :first-child {
+    display: none;
+  }
+
+  .chatLayout:not(.chatSelected) > :last-child {
+    display: none;
+  }
+}

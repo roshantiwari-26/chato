@@ -16,6 +16,7 @@ function ChatWindow({
   sendMessageRead,
   sendConversationRead,
   sendMessageDelete,
+  onBack,
 }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -383,6 +384,14 @@ function ChatWindow({
   return (
     <section className={styles.chatWindow}>
       <header className={styles.chatHeader}>
+        <button
+          type="button"
+          className={styles.backButton}
+          onClick={onBack}
+          aria-label="Back to conversations"
+        >
+          ←
+        </button>
         <div className={styles.avatar}>
           {otherUser?.username?.charAt(0).toUpperCase()}
         </div>

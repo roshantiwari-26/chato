@@ -221,3 +221,37 @@
   outline: 2px solid #ef4444;
   outline-offset: 2px;
 }
+
+.backButton {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .backButton {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #111827;
+    font-size: 24px;
+    font-weight: bold;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .chatHeader {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .messagesContainer {
+    padding: 14px 12px;
+  }
+
+  .messageBubble {
+    max-width: 80%;
+  }
+}

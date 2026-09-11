@@ -72,12 +72,12 @@ async function login(req, res, next) {
       .status(200)
       .cookie("accessToken", accessToken, {
         httpOnly: true,
-        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
         maxAge: 1000 * 60 * 60 * 24,
       })
       .json({
         message: "Login successful",
-        accessToken,
         user: {
           id: user._id,
           username: user.username,

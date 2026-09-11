@@ -1,44 +1,65 @@
 .loginPage {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%);
+  padding: 20px;
+  background-color: var(--bg-primary);
 }
 
 .loginCard {
   width: 100%;
-  max-width: 400px;
-  padding: 36px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  max-width: 420px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 0px 8px white;
+  padding: 36px 32px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease;
 }
 
 .header {
   text-align: center;
-  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .header h1 {
-  margin: 0 0 8px;
-  font-size: 32px;
-  font-weight: 900;
-  color: #111827;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
 }
 
-.header span {
-  color: transparent;
-  background: linear-gradient(135deg, #f62a8c 0%, #fe3030 100%);
+.header h1 span {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
   background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .header p {
-  margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-secondary);
+}
+
+.errorMessage {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background-color: var(--danger-bg);
+  border: 1px solid var(--danger);
+  color: var(--danger-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .form {
@@ -50,68 +71,72 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .field label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 .field input {
   width: 100%;
-  box-sizing: border-box;
-  padding: 12px 14px;
-  border: 1px solid #d1d5db;
-  color: var(--text);
-  background-color: transparent;
-  border-radius: 8px;
+  height: 44px;
+  padding: 0 14px;
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  color: var(--input-text);
+  font-size: 14px;
   outline: none;
-  font-size: 15px;
   transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.field input::placeholder {
+  color: var(--input-placeholder);
 }
 
 .field input:focus {
-  border-color: #ff5858;
-  box-shadow: 0 0 3px #f857a6;
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.field input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .loginButton {
+  height: 46px;
+  width: 100%;
   margin-top: 4px;
-  padding: 12px;
   border: none;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%);
-  color: #ffffff;
-  font-size: 18px;
+  border-radius: 10px;
+  background: var(--accent-gradient);
+  color: var(--accent-text);
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition:
-    background 0.2s,
-    transform 0.1s;
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 
-.loginButton:hover {
-  background: linear-gradient(135deg, #fe2b91 0%, #ed2d2d 100%);
+.loginButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px var(--accent-glow);
 }
 
-.loginButton:active {
-  transform: scale(0.98);
+.loginButton:active:not(:disabled) {
+  transform: translateY(0);
 }
 
-@media (max-width: 480px) {
-  .loginPage {
-    padding: 16px;
-  }
-
-  .loginCard {
-    padding: 28px 22px;
-  }
-
-  .header h1 {
-    font-size: 24px;
-  }
+.loginButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }

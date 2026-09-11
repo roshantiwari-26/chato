@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, memo } from "react";
+import { useEffect, useRef, useState, memo, useCallback } from "react";
 import styles from "./MessageInput.module.css";
 
 function MessageInput({
@@ -13,18 +13,22 @@ function MessageInput({
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
 
+  const stopTyping = useCallback(() => {
+    if (isTypingRef.current && receiverId) {
+      isTypingRef.current = false;
+      sendTypingStop?.(receiverId);
+    }
+  }, [receiverId, sendTypingStop]);
+
   function handleChange(event) {
     const value = event.target.value;
-
     setText(value);
 
-    if (!connected || !receiverId) {
-      return;
-    }
+    if (!connected || !receiverId) return;
 
     if (!isTypingRef.current) {
       isTypingRef.current = true;
-      sendTypingStart(receiverId);
+      sendTypingStart?.(receiverId);
     }
 
     if (typingTimeoutRef.current) {
@@ -32,31 +36,22 @@ function MessageInput({
     }
 
     typingTimeoutRef.current = setTimeout(() => {
-      isTypingRef.current = false;
-      sendTypingStop(receiverId);
-    }, 1000);
+      stopTyping();
+    }, 1500);
   }
 
   function handleSubmit(event) {
     event.preventDefault();
 
     const trimmedText = text.trim();
-
-    if (!trimmedText || !connected) {
-      return;
-    }
+    if (!trimmedText || !connected) return;
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
-    if (isTypingRef.current) {
-      isTypingRef.current = false;
-      sendTypingStop(receiverId);
-    }
-
+    stopTyping();
     onSend(trimmedText);
-
     setText("");
   }
 
@@ -65,12 +60,9 @@ function MessageInput({
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-
-      if (isTypingRef.current && receiverId) {
-        sendTypingStop(receiverId);
-      }
+      stopTyping();
     };
-  }, [receiverId, sendTypingStop]);
+  }, [stopTyping]);
 
   return (
     <form className={styles.messageInput} onSubmit={handleSubmit}>

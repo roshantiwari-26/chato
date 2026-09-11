@@ -20,7 +20,7 @@ function ConversationList({
     async function loadConversations() {
       try {
         const data = await getConversations();
-        setConversations(data.conversations);
+        setConversations(data.conversations || []);
       } catch (error) {
         console.error("Failed to load conversations:", error);
       }
@@ -33,10 +33,8 @@ function ConversationList({
     async function search() {
       try {
         setSearching(true);
-
         const data = await searchUsers(searchQuery);
-
-        setSearchResults(data.users);
+        setSearchResults(data.users || []);
       } catch (error) {
         console.error("Failed to search users:", error);
         setSearchResults([]);
@@ -52,7 +50,7 @@ function ConversationList({
 
     const timer = setTimeout(() => {
       search();
-    }, 500);
+    }, 400);
 
     return () => {
       clearTimeout(timer);
@@ -62,57 +60,68 @@ function ConversationList({
   return (
     <aside className={styles.conversationList}>
       <div className={styles.conversationListHeader}>
-        <h2>Chats</h2>
+        <div className={styles.headerTop}>
+          <h2>Chats</h2>
+        </div>
 
-        <input
-          type="search"
-          placeholder="Search users..."
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-        />
+        <div className={styles.searchWrapper}>
+          <input
+            type="search"
+            placeholder="Search users..."
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            className={styles.searchInput}
+          />
 
-        {searchQuery.trim() && (
-          <div className={styles.searchResults}>
-            {searching ? (
-              <p>Searching...</p>
-            ) : searchResults.length === 0 ? (
-              <p>No users found.</p>
-            ) : (
-              searchResults.map((user) => (
-                <button
-                  key={user._id}
-                  type="button"
-                  className={styles.searchResult}
-                  onClick={() => {
-                    onStartConversation(user);
-                    setSearchQuery("");
-                  }}
-                >
-                  <div className={styles.avatar}>
-                    {user.username?.charAt(0).toUpperCase()}
-                  </div>
+          {searchQuery.trim() && (
+            <div className={styles.searchResults}>
+              {searching ? (
+                <p className={styles.searchStateText}>Searching users...</p>
+              ) : searchResults.length === 0 ? (
+                <p className={styles.searchStateText}>No users found.</p>
+              ) : (
+                searchResults.map((user) => (
+                  <button
+                    key={user._id}
+                    type="button"
+                    className={styles.searchResult}
+                    onClick={() => {
+                      onStartConversation(user);
+                      setSearchQuery("");
+                    }}
+                  >
+                    <div className={styles.avatar}>
+                      {user.username?.charAt(0).toUpperCase()}
+                    </div>
 
-                  <div className={styles.conversationInfo}>
-                    <strong>{user.username}</strong>
-                    <span className={styles.email}>{user.email}</span>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-        )}
+                    <div className={styles.conversationInfo}>
+                      <strong className={styles.username}>
+                        {user.username}
+                      </strong>
+                      <span className={styles.email}>{user.email}</span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={styles.conversationItems}>
         {conversations.length === 0 ? (
-          <p className={styles.emptyState}>No conversations yet.</p>
+          <div className={styles.emptyState}>
+            <p>No conversations yet.</p>
+            <span>Search for a user above to start chatting.</span>
+          </div>
         ) : (
           conversations.map((conversation) => {
-            const otherUser = conversation.participants.find(
+            const otherUser = conversation.participants?.find(
               (user) => user._id !== currentUser?.id,
             );
 
             const selected = conversation._id === selectedConversationId;
+            const unread = unreadCounts?.[conversation._id];
 
             return (
               <button
@@ -131,11 +140,12 @@ function ConversationList({
 
                 <div className={styles.conversationInfo}>
                   <div className={styles.conversationTop}>
-                    <strong>{otherUser?.username}</strong>
-
-                    {unreadCounts?.[conversation._id] > 0 && (
+                    <strong className={styles.username}>
+                      {otherUser?.username}
+                    </strong>
+                    {unread > 0 && (
                       <span className={styles.unreadCount}>
-                        {unreadCounts[conversation._id]}
+                        {unread > 99 ? "99+" : unread}
                       </span>
                     )}
                   </div>

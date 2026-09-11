@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import styles from "./Login.module.css";
 
@@ -12,8 +12,13 @@ function Login() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   function handleChange(type, value) {
+    if (errorMessage) {
+      setErrorMessage("");
+    }
+
     setCredentials((previousCredentials) => ({
       ...previousCredentials,
       [type]: value,
@@ -22,13 +27,31 @@ function Login() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setErrorMessage("");
+
+    const sanitizedEmail = credentials.email.trim();
+
+    if (!sanitizedEmail) {
+      setErrorMessage("Please enter a valid email address.");
+      return;
+    }
 
     try {
       setLoading(true);
 
-      await login(credentials);
+      await login({
+        email: sanitizedEmail,
+        password: credentials.password,
+      });
     } catch (error) {
       console.error("Login failed:", error);
+
+      const displayError =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Invalid email or password. Please try again.";
+
+      setErrorMessage(displayError);
     } finally {
       setLoading(false);
     }
@@ -45,11 +68,20 @@ function Login() {
           <h1>
             Welcome to <span>ChatO</span>
           </h1>
-
           <p>Login to continue chatting</p>
         </div>
 
-        <form className={styles.form} onSubmit={handleSubmit}>
+        {errorMessage && (
+          <div className={styles.errorMessage} role="alert" aria-live="polite">
+            {errorMessage}
+          </div>
+        )}
+
+        <form
+          className={styles.form}
+          onSubmit={handleSubmit}
+          aria-busy={loading}
+        >
           <div className={styles.field}>
             <label htmlFor="email">Email</label>
 
@@ -61,6 +93,7 @@ function Login() {
               onChange={(event) => handleChange("email", event.target.value)}
               required
               disabled={loading}
+              autoComplete="email"
             />
           </div>
 
@@ -75,6 +108,7 @@ function Login() {
               onChange={(event) => handleChange("password", event.target.value)}
               required
               disabled={loading}
+              autoComplete="current-password"
             />
           </div>
 
@@ -86,6 +120,12 @@ function Login() {
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
+
+        <div className={styles.footer}>
+          <p>
+            Don't have an account? <Link to="/register">Sign up</Link>
+          </p>
+        </div>
       </section>
     </main>
   );

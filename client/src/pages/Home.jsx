@@ -64,30 +64,34 @@ function Home() {
           selectedConversation ? styles.chatSelected : ""
         }`}
       >
-        <ConversationList
-          currentUser={currentUser}
-          selectedConversationId={selectedConversation?._id}
-          onSelectConversation={setSelectedConversation}
-          unreadCounts={unreadCounts}
-          markConversationUnreadAsRead={markConversationUnreadAsRead}
-          onStartConversation={handleStartConversation}
-        />
+        <div className={styles.sidebarSection}>
+          <ConversationList
+            currentUser={currentUser}
+            selectedConversationId={selectedConversation?._id}
+            onSelectConversation={setSelectedConversation}
+            unreadCounts={unreadCounts}
+            markConversationUnreadAsRead={markConversationUnreadAsRead}
+            onStartConversation={handleStartConversation}
+          />
+        </div>
 
-        <ChatWindow
-          currentUser={currentUser}
-          conversation={selectedConversation}
-          sendMessage={sendMessage}
-          connected={connected}
-          lastMessage={lastMessage}
-          subscribeToPresence={subscribeToPresence}
-          unsubscribePresence={unsubscribePresence}
-          sendTypingStart={sendTypingStart}
-          sendTypingStop={sendTypingStop}
-          sendMessageRead={sendMessageRead}
-          sendConversationRead={sendConversationRead}
-          sendMessageDelete={sendMessageDelete}
-          onBack={() => setSelectedConversation(null)}
-        />
+        <div className={styles.chatSection}>
+          <ChatWindow
+            currentUser={currentUser}
+            conversation={selectedConversation}
+            sendMessage={sendMessage}
+            connected={connected}
+            lastMessage={lastMessage}
+            subscribeToPresence={subscribeToPresence}
+            unsubscribePresence={unsubscribePresence}
+            sendTypingStart={sendTypingStart}
+            sendTypingStop={sendTypingStop}
+            sendMessageRead={sendMessageRead}
+            sendConversationRead={sendConversationRead}
+            sendMessageDelete={sendMessageDelete}
+            onBack={() => setSelectedConversation(null)}
+          />
+        </div>
       </main>
     </div>
   );

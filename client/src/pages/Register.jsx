@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import styles from "./Login.module.css";
 
@@ -110,6 +110,11 @@ function Register() {
             {loading ? "Creating account..." : "Register"}
           </button>
         </form>
+        <div className={styles.footer}>
+          <p>
+            Already have an account? <Link to="/login">Log in</Link>
+          </p>
+        </div>
       </section>
     </main>
   );

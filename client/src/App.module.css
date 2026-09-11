@@ -1,28 +1,48 @@
 .app {
   width: 100%;
   height: 100vh;
-
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-
   overflow: hidden;
+  background-color: var(--bg-primary);
+  transition: background-color 0.25s ease;
 }
 
 .chatLayout {
   flex: 1;
   min-height: 0;
-
   width: 100%;
-  max-width: 1400px;
-
   margin: 0 auto;
-
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
-
-  background: #ffffff;
-
+  grid-template-columns: 340px minmax(0, 1fr);
+  background: var(--surface);
   overflow: hidden;
+  position: relative;
+  transition: background-color 0.25s ease;
+}
+
+.sidebarSection {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  transition:
+    border-color 0.25s ease,
+    background-color 0.25s ease;
+}
+
+.chatSection {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-primary);
+  position: relative;
 }
 
 @media (max-width: 768px) {
@@ -30,11 +50,18 @@
     grid-template-columns: 1fr;
   }
 
-  .chatLayout.chatSelected > :first-child {
+  .sidebarSection,
+  .chatSection {
+    width: 100%;
+    height: 100%;
+    will-change: transform;
+  }
+
+  .chatLayout.chatSelected .sidebarSection {
     display: none;
   }
 
-  .chatLayout:not(.chatSelected) > :last-child {
+  .chatLayout:not(.chatSelected) .chatSection {
     display: none;
   }
 }

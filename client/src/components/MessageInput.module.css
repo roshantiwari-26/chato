@@ -1,85 +1,76 @@
 .messageInput {
   flex-shrink: 0;
-
   display: flex;
   align-items: center;
-  gap: 10px;
-
-  padding: 14px 16px;
-
-  border-top: 1px solid #e5e7eb;
-  background: #ffffff;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .input {
   flex: 1;
   min-width: 0;
-
-  padding: 11px 16px;
-
-  border: 1px solid #d1d5db;
-  border-radius: 22px;
-
+  padding: 12px 20px;
+  border: 1px solid var(--input-border);
+  border-radius: 24px;
   outline: none;
-
-  color: #111827;
-  background: #ffffff;
-
-  font-size: 14px;
-
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  color: var(--input-text);
+  background: var(--input-bg);
+  font-size: 14.5px;
+  transition: all 0.2s ease;
 }
 
 .input::placeholder {
-  color: #9ca3af;
+  color: var(--input-placeholder);
 }
 
 .input:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  background: rgba(15, 23, 42, 0.85);
 }
 
 .input:disabled {
-  background: #f3f4f6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .sendButton {
   flex-shrink: 0;
-
-  min-width: 70px;
-  padding: 11px 18px;
-
+  min-width: 80px;
+  padding: 12px 22px;
   border: none;
-  border-radius: 22px;
-
+  border-radius: 24px;
   color: #ffffff;
-  background: #4f46e5;
-
+  background: var(--accent-gradient);
   font-size: 14px;
-  font-weight: 600;
-
+  font-weight: 700;
   cursor: pointer;
-
-  transition:
-    background-color 0.15s ease,
-    opacity 0.15s ease;
+  box-shadow: 0 4px 14px var(--accent-glow);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sendButton:hover:not(:disabled) {
-  background: #4338ca;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.sendButton:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .sendButton:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 @media (max-width: 768px) {
   .messageInput {
-    padding: 10px 12px;
+    padding: 12px 14px;
     gap: 8px;
   }
 }

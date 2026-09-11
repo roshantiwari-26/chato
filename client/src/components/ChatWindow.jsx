@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import MessageInput from "./MessageInput";
 import MessageList from "./MessageList";
 import styles from "./ChatWindow.module.css";
+
+const getNormalizedId = (entity) =>
+  entity?.id?.toString() ||
+  entity?._id?.toString() ||
+  entity?.clientMessageId?.toString();
 
 function ChatWindow({
   conversation,
@@ -23,23 +28,22 @@ function ChatWindow({
   const [otherUserOnline, setOtherUserOnline] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
 
-  const currentUserId =
-    currentUser?._id?.toString() || currentUser?.id?.toString();
+  const currentUserId = getNormalizedId(currentUser);
+  const conversationId = getNormalizedId(conversation);
 
   const otherUser = conversation?.participants?.find(
-    (user) => user._id?.toString() !== currentUserId,
+    (user) => getNormalizedId(user) !== currentUserId,
   );
-
-  const conversationId = conversation?._id?.toString();
-  const otherUserId = otherUser?._id?.toString();
+  const otherUserId = getNormalizedId(otherUser);
 
   useEffect(() => {
-    if (!conversationId || !otherUserId || !connected) {
-      return;
-    }
+    setOtherUserTyping(false);
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!conversationId || !otherUserId || !connected) return;
 
     setOtherUserOnline(false);
-
     subscribeToPresence(otherUserId);
 
     return () => {
@@ -54,241 +58,149 @@ function ChatWindow({
   ]);
 
   useEffect(() => {
-    if (!lastMessage || !otherUserId) {
-      return;
-    }
+    if (!lastMessage || !otherUserId) return;
 
-    if (
-      lastMessage.type !== "presence.online" &&
-      lastMessage.type !== "presence.offline"
-    ) {
-      return;
-    }
+    const { type, payload } = lastMessage;
+    if (type !== "presence.online" && type !== "presence.offline") return;
 
-    const userId = lastMessage.payload?.userId?.toString();
+    const targetUserId = payload?.userId?.toString();
+    if (targetUserId !== otherUserId) return;
 
-    if (userId !== otherUserId) {
-      return;
-    }
-
-    if (lastMessage.type === "presence.online") {
-      setOtherUserOnline(true);
-    }
-
-    if (lastMessage.type === "presence.offline") {
-      setOtherUserOnline(false);
-    }
+    setOtherUserOnline(type === "presence.online");
   }, [lastMessage, otherUserId]);
 
   useEffect(() => {
-    if (!conversation || !currentUser || !otherUser || !lastMessage) {
-      return;
-    }
+    if (!conversationId || !otherUserId || !lastMessage) return;
 
-    const userId = lastMessage.payload?.userId;
+    const { type, payload } = lastMessage;
+    const typingUserId = payload?.userId?.toString();
 
-    if (userId?.toString() !== otherUser._id?.toString()) {
-      return;
-    }
+    if (typingUserId !== otherUserId) return;
 
-    if (lastMessage.type === "typing.start") {
-      setOtherUserTyping(true);
-    }
+    if (type === "typing.start") setOtherUserTyping(true);
+    if (type === "typing.stop") setOtherUserTyping(false);
+  }, [lastMessage, conversationId, otherUserId]);
 
-    if (lastMessage.type === "typing.stop") {
-      setOtherUserTyping(false);
-    }
-  }, [lastMessage, conversation, currentUser, otherUser]);
+  const updateSingleMessage = useCallback((messageId, updates) => {
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) => {
+        const idMatches =
+          getNormalizedId(msg) === messageId?.toString() ||
+          msg.clientMessageId?.toString() === messageId?.toString();
 
-  function updateMessageStatus(messageId, updates) {
-    setMessages((previousMessages) =>
-      previousMessages.map((message) => {
-        const currentMessageId =
-          message.id?.toString() || message._id?.toString();
-
-        if (currentMessageId !== messageId?.toString()) {
-          return message;
-        }
-
-        return {
-          ...message,
-          ...updates,
-        };
+        return idMatches ? { ...msg, ...updates } : msg;
       }),
     );
-  }
+  }, []);
 
   useEffect(() => {
-    if (!lastMessage || !conversationId) {
-      return;
-    }
+    if (!lastMessage || !conversationId) return;
 
-    if (lastMessage.type === "message.new") {
-      const message = lastMessage.payload;
+    const { type, payload } = lastMessage;
+    if (!payload) return;
 
-      if (!message) {
-        return;
-      }
+    switch (type) {
+      case "message.new": {
+        if (payload.conversationId?.toString() !== conversationId) return;
 
-      if (message.conversationId?.toString() !== conversationId) {
-        return;
-      }
+        setMessages((prev) => {
+          const incomingId = getNormalizedId(payload);
+          const exists = prev.some(
+            (msg) =>
+              getNormalizedId(msg) === incomingId ||
+              (msg.clientMessageId &&
+                msg.clientMessageId === payload.clientMessageId),
+          );
 
-      setMessages((previousMessages) => {
-        const messageId = message.id?.toString();
+          if (exists) return prev;
 
-        const alreadyExists = previousMessages.some(
-          (existingMessage) =>
-            existingMessage.id?.toString() === messageId ||
-            existingMessage._id?.toString() === messageId,
-        );
+          return [...prev, { ...payload, status: "delivered" }];
+        });
 
-        if (alreadyExists) {
-          return previousMessages;
+        if (sendMessageRead && payload.id) {
+          sendMessageRead(payload.id);
         }
+        break;
+      }
 
-        return [
-          ...previousMessages,
-          {
-            ...message,
+      case "message.ack": {
+        if (payload.conversationId?.toString() !== conversationId) return;
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.clientMessageId?.toString() ===
+            payload.clientMessageId?.toString()
+              ? {
+                  ...msg,
+                  id: payload.messageId,
+                  status: "sent",
+                  createdAt: payload.createdAt || msg.createdAt,
+                }
+              : msg,
+          ),
+        );
+        break;
+      }
+
+      case "message.error": {
+        if (payload.clientMessageId) {
+          updateSingleMessage(payload.clientMessageId, { status: "failed" });
+        }
+        break;
+      }
+
+      case "message.delivered": {
+        if (payload.messageId) {
+          updateSingleMessage(payload.messageId, {
             status: "delivered",
-          },
-        ];
-      });
-
-      sendMessageRead(message.id);
-
-      return;
-    }
-
-    if (lastMessage.type === "message.ack") {
-      const ack = lastMessage.payload;
-
-      if (!ack) {
-        return;
+            deliveredAt: payload.deliveredAt,
+          });
+        }
+        break;
       }
 
-      if (ack.conversationId?.toString() !== conversationId) {
-        return;
+      case "message.read": {
+        if (payload.messageId) {
+          updateSingleMessage(payload.messageId, {
+            status: "read",
+            readAt: payload.readAt,
+          });
+        }
+        break;
       }
 
-      setMessages((previousMessages) =>
-        previousMessages.map((message) =>
-          message.clientMessageId?.toString() ===
-          ack.clientMessageId?.toString()
-            ? {
-                ...message,
-                id: ack.messageId,
-                status: "sent",
-                createdAt: ack.createdAt,
-              }
-            : message,
-        ),
-      );
+      case "conversation.read": {
+        if (payload.conversationId?.toString() !== conversationId) return;
 
-      return;
-    }
-
-    if (lastMessage.type === "message.error") {
-      const { clientMessageId } = lastMessage.payload || {};
-
-      if (!clientMessageId) {
-        return;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            getNormalizedId(msg.senderId) === currentUserId
+              ? { ...msg, status: "read", readAt: payload.readAt }
+              : msg,
+          ),
+        );
+        break;
       }
 
-      setMessages((previousMessages) =>
-        previousMessages.map((message) =>
-          message.clientMessageId?.toString() === clientMessageId.toString()
-            ? {
-                ...message,
-                status: "failed",
-              }
-            : message,
-        ),
-      );
-
-      return;
-    }
-
-    if (lastMessage.type === "message.delivered") {
-      const { messageId, deliveredAt } = lastMessage.payload || {};
-
-      if (!messageId) {
-        return;
+      case "message.deleted": {
+        if (payload.messageId) {
+          updateSingleMessage(payload.messageId, {
+            deletedAt: payload.deletedAt,
+          });
+        }
+        break;
       }
 
-      updateMessageStatus(messageId, {
-        status: "delivered",
-        deliveredAt,
-      });
-
-      return;
+      default:
+        break;
     }
-
-    if (lastMessage.type === "message.read") {
-      const { messageId, readAt } = lastMessage.payload || {};
-
-      if (!messageId) {
-        return;
-      }
-
-      updateMessageStatus(messageId, {
-        readAt,
-      });
-
-      return;
-    }
-
-    if (lastMessage.type === "conversation.read") {
-      const { conversationId: readConversationId, readAt } =
-        lastMessage.payload;
-
-      if (readConversationId?.toString() !== conversationId?.toString()) {
-        return;
-      }
-
-      setMessages((previousMessages) =>
-        previousMessages.map((message) =>
-          message.senderId?.toString() === currentUserId?.toString()
-            ? {
-                ...message,
-                readAt,
-              }
-            : message,
-        ),
-      );
-
-      return;
-    }
-
-    if (lastMessage.type === "message.deleted") {
-      const { messageId, deletedAt } = lastMessage.payload || {};
-
-      if (!messageId) {
-        return;
-      }
-
-      setMessages((previousMessages) =>
-        previousMessages.map((message) => {
-          const currentMessageId =
-            message.id?.toString() ||
-            message._id?.toString() ||
-            message.clientMessageId;
-
-          if (currentMessageId !== messageId.toString()) {
-            return message;
-          }
-
-          return {
-            ...message,
-            deletedAt,
-          };
-        }),
-      );
-
-      return;
-    }
-  }, [lastMessage, conversationId, sendMessageRead]);
+  }, [
+    lastMessage,
+    conversationId,
+    currentUserId,
+    sendMessageRead,
+    updateSingleMessage,
+  ]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -296,81 +208,69 @@ function ChatWindow({
       return;
     }
 
-    let cancelled = false;
+    let isCancelled = false;
 
     async function fetchMessages() {
       try {
         setLoading(true);
-
         const response = await fetch(
           `http://localhost:3000/api/conversations/${conversationId}/messages`,
-          {
-            credentials: "include",
-          },
+          { credentials: "include" },
         );
 
         const data = await response.json();
+        if (!response.ok) throw new Error(data.message);
 
-        if (!response.ok) {
-          throw new Error(data.message);
-        }
+        if (isCancelled) return;
 
-        if (cancelled) {
-          return;
-        }
-
-        const fetchedMessages = data.messages.map((message) => ({
-          ...message,
-
-          status: message.readAt
-            ? "read"
-            : message.deliveredAt
-              ? "delivered"
-              : "sent",
+        const fetchedMessages = data.messages.map((msg) => ({
+          ...msg,
+          status: msg.readAt ? "read" : msg.deliveredAt ? "delivered" : "sent",
         }));
 
         setMessages(fetchedMessages);
 
-        // Mark unread received messages as read.
-        sendConversationRead(conversationId);
-      } catch (error) {
-        console.error("Failed to fetch messages:", error);
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
+        if (sendConversationRead) {
+          sendConversationRead(conversationId);
         }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error("Failed to fetch messages:", error);
+        }
+      } finally {
+        if (!isCancelled) setLoading(false);
       }
     }
 
     fetchMessages();
 
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
-  }, [conversationId, currentUserId, sendConversationRead]);
+  }, [conversationId, sendConversationRead]);
 
-  function handleSend(text) {
-    if (!conversationId || !currentUserId || !otherUserId) {
-      return;
-    }
+  const handleSend = useCallback(
+    (text) => {
+      if (!conversationId || !currentUserId || !otherUserId) return;
 
-    const clientMessageId = crypto.randomUUID();
+      const clientMessageId = crypto.randomUUID();
 
-    const optimisticMessage = {
-      id: clientMessageId,
-      clientMessageId,
-      conversationId,
-      senderId: currentUserId,
-      receiverId: otherUserId,
-      text,
-      createdAt: new Date().toISOString(),
-      status: "sending",
-    };
+      const optimisticMessage = {
+        id: clientMessageId,
+        clientMessageId,
+        conversationId,
+        senderId: currentUserId,
+        receiverId: otherUserId,
+        text,
+        createdAt: new Date().toISOString(),
+        status: "sending",
+      };
 
-    setMessages((previousMessages) => [...previousMessages, optimisticMessage]);
-
-    sendMessage(otherUserId, text, clientMessageId);
-  }
+      setMessages((prev) => [...prev, optimisticMessage]);
+      sendMessage(otherUserId, text, clientMessageId);
+    },
+    [conversationId, currentUserId, otherUserId, sendMessage],
+  );
 
   if (!conversation) {
     return (
@@ -393,19 +293,18 @@ function ChatWindow({
           ←
         </button>
         <div className={styles.avatar}>
-          {otherUser?.username?.charAt(0).toUpperCase()}
+          {otherUser?.username?.charAt(0).toUpperCase() || "?"}
         </div>
 
         <div className={styles.userInfo}>
-          <h2>{otherUser?.username}</h2>
-
-          {otherUserTyping ? (
-            <span>Typing...</span>
-          ) : otherUserOnline ? (
-            <span>Online</span>
-          ) : (
-            <span>Offline</span>
-          )}
+          <h2>{otherUser?.username || "Unknown User"}</h2>
+          <span className={otherUserOnline ? styles.online : styles.offline}>
+            {otherUserTyping
+              ? "Typing..."
+              : otherUserOnline
+                ? "Online"
+                : "Offline"}
+          </span>
         </div>
       </header>
 
@@ -415,6 +314,7 @@ function ChatWindow({
         {!loading && messages.length === 0 && (
           <p className={styles.emptyChat}>No messages yet.</p>
         )}
+
         <MessageList
           messages={messages}
           currentUserId={currentUserId}

@@ -1,40 +1,172 @@
 :root {
-  --text: black;
-  --round: 8px;
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --surface: #ffffff;
+  --surface-hover: #f1f5f9;
+  --surface-selected: #e0e7ff;
 
-  font: 18px/145% var(Arial);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --border: #e2e8f0;
+  --border-focus: #6366f1;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --accent: #6366f1;
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --accent-hover: #4f46e5;
+  --accent-text: #ffffff;
+  --accent-glow: rgba(99, 102, 241, 0.15);
+
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --danger-text: #b91c1c;
+  --danger-bg: rgba(239, 68, 68, 0.08);
+  --danger-glow: rgba(239, 68, 68, 0.15);
+
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-text: #0f172a;
+  --input-placeholder: #94a3b8;
+  --input-focus: #6366f1;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+
+  --glass-surface: rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0b0f17;
+  --bg-secondary: #131927;
+  --surface: #1e293b;
+  --surface-hover: #334155;
+  --surface-selected: #312e81;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: #818cf8;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  --accent: #6366f1;
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  --accent-hover: #818cf8;
+  --accent-text: #ffffff;
+  --accent-glow: rgba(99, 102, 241, 0.3);
+
+  --danger: #f87171;
+  --danger-hover: #ef4444;
+  --danger-text: #fca5a5;
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --danger-glow: rgba(248, 113, 113, 0.2);
+
+  --input-bg: #0f172a;
+  --input-border: #334155;
+  --input-text: #f8fafc;
+  --input-placeholder: #64748b;
+  --input-focus: #818cf8;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+
+  --glass-surface: rgba(19, 25, 39, 0.95);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-primary: #0b0f17;
+    --bg-secondary: #131927;
+    --surface: #1e293b;
+    --surface-hover: #334155;
+    --surface-selected: #312e81;
+
+    --border: rgba(255, 255, 255, 0.08);
+    --border-focus: #818cf8;
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    --accent: #6366f1;
+    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    --accent-hover: #818cf8;
+    --accent-text: #ffffff;
+    --accent-glow: rgba(99, 102, 241, 0.3);
+
+    --danger: #f87171;
+    --danger-hover: #ef4444;
+    --danger-text: #fca5a5;
+    --danger-bg: rgba(239, 68, 68, 0.15);
+    --danger-glow: rgba(248, 113, 113, 0.2);
+
+    --input-bg: #0f172a;
+    --input-border: #334155;
+    --input-text: #f8fafc;
+    --input-placeholder: #64748b;
+    --input-focus: #818cf8;
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+
+    --glass-surface: rgba(19, 25, 39, 0.95);
   }
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
 body {
-  font-family: Arial, sans-serif;
-  background: #f3f4f6;
+  margin: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family:
+    "Plus Jakarta Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
 }
 
 #root {
   width: 1126px;
   max-width: 100%;
   margin: 0 auto;
-  min-height: 100svh;
-  border-radius: var(--round);
-
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--surface);
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
+  box-shadow: var(--shadow-lg);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+@media (max-width: 1024px) {
+  #root {
+    width: 100%;
+    border-left: none;
+    border-right: none;
+  }
 }

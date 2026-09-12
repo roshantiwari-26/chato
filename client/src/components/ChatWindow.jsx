@@ -21,17 +21,11 @@ const getNormalizedId = (value) => {
   );
 };
 
-const getMessageKey = (message) => {
-  if (!message) {
-    return null;
-  }
+const getServerMessageId = (message) =>
+  getNormalizedId(message?._id) || getNormalizedId(message?.id);
 
-  return (
-    getNormalizedId(message._id) ||
-    getNormalizedId(message.id) ||
-    getNormalizedId(message.clientMessageId)
-  );
-};
+const getClientMessageId = (message) =>
+  getNormalizedId(message?.clientMessageId);
 
 const getMessageStatus = (message) => {
   if (message.readAt) {
@@ -45,44 +39,42 @@ const getMessageStatus = (message) => {
   return "sent";
 };
 
-const mergeMessages = (existingMessages, incomingMessages) => {
-  const messageMap = new Map();
+const messagesMatch = (first, second) => {
+  const firstServerId = getServerMessageId(first);
+  const secondServerId = getServerMessageId(second);
 
-  for (const message of existingMessages) {
-    const key = getMessageKey(message);
-
-    ```
-if (key) {
-  messageMap.set(key, message);
-}
-```;
+  if (firstServerId && secondServerId && firstServerId === secondServerId) {
+    return true;
   }
 
-  for (const message of incomingMessages) {
-    const key = getMessageKey(message);
+  const firstClientId = getClientMessageId(first);
+  const secondClientId = getClientMessageId(second);
 
-    ```
-if (!key) {
-  continue;
-}
-
-const existingMessage = messageMap.get(key);
-
-messageMap.set(
-  key,
-  existingMessage
-    ? {
-        ...existingMessage,
-        ...message,
-      }
-    : message,
-);
-```;
-  }
-
-  return Array.from(messageMap.values()).sort(
-    (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+  return Boolean(
+    firstClientId && secondClientId && firstClientId === secondClientId,
   );
+};
+
+const mergeMessages = (existingMessages, incomingMessages) => {
+  const merged = [...existingMessages];
+
+  for (const incomingMessage of incomingMessages) {
+    const existingIndex = merged.findIndex((message) =>
+      messagesMatch(message, incomingMessage),
+    );
+
+    if (existingIndex === -1) {
+      merged.push(incomingMessage);
+      continue;
+    }
+
+    merged[existingIndex] = {
+      ...merged[existingIndex],
+      ...incomingMessage,
+    };
+  }
+
+  return merged.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 };
 
 function ChatWindow({
@@ -124,9 +116,8 @@ function ChatWindow({
     setMessages((previousMessages) =>
       previousMessages.map((message) => {
         const matches =
-          getNormalizedId(message._id) === normalizedMessageId ||
-          getNormalizedId(message.id) === normalizedMessageId ||
-          getNormalizedId(message.clientMessageId) === normalizedMessageId;
+          getServerMessageId(message) === normalizedMessageId ||
+          getClientMessageId(message) === normalizedMessageId;
 
         return matches
           ? {
@@ -139,8 +130,8 @@ function ChatWindow({
   }, []);
 
   useEffect(() => {
-    setOtherUserTyping(false);
     setOtherUserOnline(false);
+    setOtherUserTyping(false);
   }, [conversationId]);
 
   useEffect(() => {
@@ -247,7 +238,7 @@ function ChatWindow({
 
         setMessages((previousMessages) =>
           previousMessages.map((message) =>
-            getNormalizedId(message.clientMessageId) === clientMessageId
+            getClientMessageId(message) === clientMessageId
               ? {
                   ...message,
                   id: payload.messageId,
@@ -442,27 +433,23 @@ function ChatWindow({
   if (!conversation) {
     return (
       <section className={styles.emptyWindow}>
-        {" "}
         <h2>Select a conversation</h2>{" "}
-        <p>Choose a chat from the sidebar to start messaging.</p>{" "}
+        <p>Choose a chat from the sidebar to start messaging.</p>
       </section>
     );
   }
 
   return (
     <section className={styles.chatWindow}>
-      {" "}
       <header className={styles.chatHeader}>
-        {" "}
         <button
           type="button"
           className={styles.backButton}
           onClick={onBack}
           aria-label="Back to conversations"
         >
-          ←{" "}
+          ←
         </button>
-        ```
         <div className={styles.avatar}>
           {otherUser?.username?.charAt(0).toUpperCase() || "?"}
         </div>

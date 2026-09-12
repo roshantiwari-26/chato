@@ -50,8 +50,10 @@ function Home() {
       }
 
       setSelectedConversation(data.conversation);
+      return data.conversation;
     } catch (error) {
       console.error("Failed to start conversation:", error);
+      return null;
     }
   }
 

@@ -97,24 +97,38 @@ function ConversationList({
     };
   }, [searchQuery]);
 
-  function handleStartConversation(user) {
-    onStartConversation(user);
+  async function handleStartConversation(user) {
+    const conversation = await onStartConversation(user);
+
+    if (conversation) {
+      setConversations((previousConversations) => {
+        const conversationId = getNormalizedId(conversation);
+
+        const exists = previousConversations.some(
+          (item) => getNormalizedId(item) === conversationId,
+        );
+
+        if (exists) {
+          return previousConversations;
+        }
+
+        return [conversation, ...previousConversations];
+      });
+    }
+
     setSearchQuery("");
   }
 
   return (
     <aside className={styles.conversationList}>
-      {" "}
       <div className={styles.conversationListHeader}>
-        {" "}
         <div className={styles.headerTop}>
-          {" "}
-          <h2>Chats</h2>{" "}
+          <h2>Chats</h2>
         </div>
         <div className={styles.searchWrapper}>
           <input
             type="search"
-            placeholder="Search users..."
+            placeholder="Search a user on ChatO..."
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             className={styles.searchInput}

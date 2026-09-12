@@ -12,54 +12,85 @@ function MessageInput({
 
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
+  const previousReceiverIdRef = useRef(receiverId);
+
+  const clearTypingTimeout = useCallback(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  }, []);
 
   const stopTyping = useCallback(() => {
+    clearTypingTimeout();
+
     if (isTypingRef.current && receiverId) {
       isTypingRef.current = false;
       sendTypingStop?.(receiverId);
     }
-  }, [receiverId, sendTypingStop]);
+  }, [clearTypingTimeout, receiverId, sendTypingStop]);
 
-  function handleChange(event) {
-    const value = event.target.value;
-    setText(value);
+  const handleChange = useCallback(
+    (event) => {
+      const value = event.target.value;
+      setText(value);
 
-    if (!connected || !receiverId) return;
+      if (!connected || !receiverId) {
+        stopTyping();
+        return;
+      }
 
-    if (!isTypingRef.current) {
-      isTypingRef.current = true;
-      sendTypingStart?.(receiverId);
-    }
+      if (!isTypingRef.current) {
+        isTypingRef.current = true;
+        sendTypingStart?.(receiverId);
+      }
 
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
+      clearTypingTimeout();
 
-    typingTimeoutRef.current = setTimeout(() => {
+      typingTimeoutRef.current = setTimeout(() => {
+        stopTyping();
+      }, 1500);
+    },
+    [connected, receiverId, sendTypingStart, clearTypingTimeout, stopTyping],
+  );
+
+  const handleSubmit = useCallback(
+    (event) => {
+      event.preventDefault();
+
+      const trimmedText = text.trim();
+
+      if (!trimmedText || !connected) {
+        return;
+      }
+
       stopTyping();
-    }, 1500);
-  }
+      onSend(trimmedText);
+      setText("");
+    },
+    [text, connected, stopTyping, onSend],
+  );
 
-  function handleSubmit(event) {
-    event.preventDefault();
+  useEffect(() => {
+    if (previousReceiverIdRef.current !== receiverId) {
+      if (isTypingRef.current && previousReceiverIdRef.current) {
+        sendTypingStop?.(previousReceiverIdRef.current);
+      }
 
-    const trimmedText = text.trim();
-    if (!trimmedText || !connected) return;
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
+      clearTypingTimeout();
+      isTypingRef.current = false;
+      previousReceiverIdRef.current = receiverId;
     }
+  }, [receiverId, sendTypingStop, clearTypingTimeout]);
 
-    stopTyping();
-    onSend(trimmedText);
-    setText("");
-  }
+  useEffect(() => {
+    if (!connected) {
+      stopTyping();
+    }
+  }, [connected, stopTyping]);
 
   useEffect(() => {
     return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
       stopTyping();
     };
   }, [stopTyping]);

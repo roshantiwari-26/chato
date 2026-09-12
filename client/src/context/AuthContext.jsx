@@ -2,12 +2,28 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext(null);
 
+async function parseResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  const text = await response.text();
+
+  return {
+    message: text || "Something went wrong",
+  };
+}
+
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
+    let isCancelled = false;
+
     async function checkAuthentication() {
       try {
         const response = await fetch(
@@ -17,82 +33,79 @@ export function AuthProvider({ children }) {
           },
         );
 
-        const data = await response.json();
+        const data = await parseResponse(response);
 
         if (!response.ok) {
-          throw new Error(data.message);
+          throw new Error(data.message || "Authentication failed");
         }
+
+        if (isCancelled) return;
 
         setCurrentUser(data.user);
         setIsAuthenticated(true);
-      } catch (error) {
+      } catch {
+        if (isCancelled) return;
+
         setCurrentUser(null);
         setIsAuthenticated(false);
       } finally {
-        setCheckingAuth(false);
+        if (!isCancelled) {
+          setCheckingAuth(false);
+        }
       }
     }
 
     checkAuthentication();
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
-  // Register
   async function register(credentials) {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/auth/register`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(credentials),
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/auth/register`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        credentials: "include",
+        body: JSON.stringify(credentials),
+      },
+    );
 
-      const data = await response.json();
+    const data = await parseResponse(response);
 
-      if (!response.ok) {
-        throw new Error(data.message || "Registration failed");
-      }
-
-      return data;
-    } catch (error) {
-      throw error;
+    if (!response.ok) {
+      throw new Error(data.message || "Registration failed");
     }
+
+    return data;
   }
 
-  // Login
   async function login(credentials) {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(credentials),
-        },
-      );
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(credentials),
+    });
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed");
-      }
+    const data = await parseResponse(response);
 
-      setCurrentUser(data.user);
-      setIsAuthenticated(true);
-
-      return data;
-    } catch (error) {
-      throw error;
+    if (!response.ok) {
+      throw new Error(data.message || "Login failed");
     }
+
+    setCurrentUser(data.user);
+    setIsAuthenticated(true);
+
+    return data;
   }
 
-  // Logout
   async function logout() {
     try {
       const response = await fetch(
@@ -104,7 +117,7 @@ export function AuthProvider({ children }) {
       );
 
       if (!response.ok) {
-        const data = await response.json();
+        const data = await parseResponse(response);
         throw new Error(data.message || "Logout failed");
       }
     } finally {

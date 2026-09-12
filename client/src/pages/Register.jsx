@@ -16,10 +16,12 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function handleChange(type, value) {
-    setCredentials((previousCredentials) => ({
-      ...previousCredentials,
-      [type]: value,
+  function handleChange(event) {
+    const { id, value } = event.target;
+
+    setCredentials((previous) => ({
+      ...previous,
+      [id]: value,
     }));
   }
 
@@ -36,7 +38,7 @@ function Register() {
         replace: true,
       });
     } catch (error) {
-      setError(error.message);
+      setError(error.message || "Registration failed");
     } finally {
       setLoading(false);
     }
@@ -48,17 +50,18 @@ function Register() {
 
   return (
     <main className={styles.loginPage}>
+      {" "}
       <section className={styles.loginCard}>
+        {" "}
         <div className={styles.header}>
+          {" "}
           <h1>
-            Join <span>ChatO</span>
+            Join <span>ChatO</span>{" "}
           </h1>
-
           <p>Create your account to start chatting</p>
         </div>
-
         <form className={styles.form} onSubmit={handleSubmit}>
-          {error && <p>{error}</p>}
+          {error && <p role="alert">{error}</p>}
 
           <div className={styles.field}>
             <label htmlFor="username">Username</label>
@@ -68,7 +71,8 @@ function Register() {
               type="text"
               placeholder="Enter your username"
               value={credentials.username}
-              onChange={(event) => handleChange("username", event.target.value)}
+              onChange={handleChange}
+              autoComplete="username"
               required
               disabled={loading}
             />
@@ -82,7 +86,8 @@ function Register() {
               type="email"
               placeholder="abc123@example.com"
               value={credentials.email}
-              onChange={(event) => handleChange("email", event.target.value)}
+              onChange={handleChange}
+              autoComplete="email"
               required
               disabled={loading}
             />
@@ -96,7 +101,8 @@ function Register() {
               type="password"
               placeholder="Create a password"
               value={credentials.password}
-              onChange={(event) => handleChange("password", event.target.value)}
+              onChange={handleChange}
+              autoComplete="new-password"
               required
               disabled={loading}
             />

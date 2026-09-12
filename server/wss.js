@@ -14,6 +14,26 @@ function initializeWebSocket(server) {
   const onlineUsers = new Map();
   const presenceWatchers = new Map();
 
+  function send(socket, type, payload = {}, extra = {}) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return false;
+    }
+
+    socket.send(
+      JSON.stringify({
+        type,
+        payload,
+        ...extra,
+      }),
+    );
+
+    return true;
+  }
+
+  function isValidObjectId(id) {
+    return Boolean(id) && mongoose.Types.ObjectId.isValid(id);
+  }
+
   function sendPresenceStatus(toUserId, targetUserId, type) {
     const socket = onlineUsers.get(toUserId);
 
@@ -21,14 +41,9 @@ function initializeWebSocket(server) {
       return;
     }
 
-    socket.send(
-      JSON.stringify({
-        type,
-        payload: {
-          userId: targetUserId,
-        },
-      }),
-    );
+    send(socket, type, {
+      userId: targetUserId,
+    });
   }
 
   async function deliverPendingMessages(userId) {
@@ -38,6 +53,10 @@ function initializeWebSocket(server) {
     });
 
     for (const message of pendingMessages) {
+      if (message.deliveredAt) {
+        continue;
+      }
+
       message.deliveredAt = new Date();
       await message.save();
 
@@ -47,20 +66,15 @@ function initializeWebSocket(server) {
         continue;
       }
 
-      senderSocket.send(
-        JSON.stringify({
-          type: "message.delivered",
-          payload: {
-            messageId: message._id,
-            deliveredAt: message.deliveredAt,
-          },
-        }),
-      );
+      send(senderSocket, "message.delivered", {
+        messageId: message._id,
+        deliveredAt: message.deliveredAt,
+      });
     }
   }
 
   async function getUnreadCounts(userId) {
-    const unreadMessages = await Message.aggregate([
+    return Message.aggregate([
       {
         $match: {
           receiverId: new mongoose.Types.ObjectId(userId),
@@ -70,15 +84,14 @@ function initializeWebSocket(server) {
       {
         $group: {
           _id: "$conversationId",
-          count: { $sum: 1 },
+          count: {
+            $sum: 1,
+          },
         },
       },
     ]);
-
-    return unreadMessages;
   }
 
-  // WebSocket authentication
   server.on("upgrade", (request, socket, head) => {
     try {
       const cookieHeader = request.headers.cookie;
@@ -88,7 +101,7 @@ function initializeWebSocket(server) {
         return;
       }
 
-      const cookies = cookie.parseCookie(cookieHeader);
+      const cookies = cookie.parse(cookieHeader);
       const token = cookies.accessToken;
 
       if (!token) {
@@ -100,14 +113,12 @@ function initializeWebSocket(server) {
         issuer: process.env.JWT_ISSUER,
       });
 
-      console.log("🔐 Authenticated WebSocket:", decoded.email);
-
       wss.handleUpgrade(request, socket, head, (ws) => {
         ws.user = decoded;
         wss.emit("connection", ws, request);
       });
     } catch (error) {
-      console.log(error.message);
+      console.error("WebSocket authentication failed:", error.message);
       socket.destroy();
     }
   });
@@ -117,39 +128,47 @@ function initializeWebSocket(server) {
 
     console.log("🟢 ONLINE:", socket.user.email);
 
+    const previousSocket = onlineUsers.get(connectedUserId);
+
+    if (previousSocket && previousSocket !== socket) {
+      previousSocket.close();
+    }
+
     onlineUsers.set(connectedUserId, socket);
 
-    await deliverPendingMessages(connectedUserId);
+    try {
+      await deliverPendingMessages(connectedUserId);
 
-    const unreadCounts = await getUnreadCounts(connectedUserId);
+      const unreadCounts = await getUnreadCounts(connectedUserId);
 
-    socket.send(
-      JSON.stringify({
-        type: "conversation.unread",
-        payload: {
-          counts: unreadCounts,
-        },
-      }),
-    );
+      send(socket, "conversation.unread", {
+        counts: unreadCounts,
+      });
 
-    // Notify users who are watching this user's presence
-    const watchers = presenceWatchers.get(connectedUserId);
+      const watchers = presenceWatchers.get(connectedUserId);
 
-    if (watchers) {
-      for (const watcherUserId of watchers) {
-        sendPresenceStatus(watcherUserId, connectedUserId, "presence.online");
+      if (watchers) {
+        for (const watcherUserId of watchers) {
+          sendPresenceStatus(watcherUserId, connectedUserId, "presence.online");
+        }
       }
+    } catch (error) {
+      console.error("WebSocket connection initialization failed:", error);
     }
 
     socket.on("message", async (rawMessage) => {
+      let data;
       let clientMessageId;
 
       try {
-        const data = JSON.parse(rawMessage.toString());
+        data = JSON.parse(rawMessage.toString());
 
-        // --------------------------------------------------
-        // presence.subscribe
-        // --------------------------------------------------
+        if (!data || typeof data !== "object") {
+          return;
+        }
+
+        clientMessageId = data.payload?.clientMessageId;
+
         if (data.type === "presence.subscribe") {
           const { userId } = data.payload || {};
 
@@ -161,25 +180,17 @@ function initializeWebSocket(server) {
             presenceWatchers.set(userId, new Set());
           }
 
-          presenceWatchers.get(userId).add(socket.user.userId);
+          presenceWatchers.get(userId).add(connectedUserId);
 
           const targetSocket = onlineUsers.get(userId);
 
-          socket.send(
-            JSON.stringify({
-              type: targetSocket ? "presence.online" : "presence.offline",
-              payload: {
-                userId,
-              },
-            }),
-          );
+          send(socket, targetSocket ? "presence.online" : "presence.offline", {
+            userId,
+          });
 
           return;
         }
 
-        // --------------------------------------------------
-        // presence.unsubscribe
-        // --------------------------------------------------
         if (data.type === "presence.unsubscribe") {
           const { userId } = data.payload || {};
 
@@ -193,7 +204,7 @@ function initializeWebSocket(server) {
             return;
           }
 
-          watchers.delete(socket.user.userId);
+          watchers.delete(connectedUserId);
 
           if (watchers.size === 0) {
             presenceWatchers.delete(userId);
@@ -202,9 +213,6 @@ function initializeWebSocket(server) {
           return;
         }
 
-        // --------------------------------------------------
-        // typing.start
-        // --------------------------------------------------
         if (data.type === "typing.start") {
           const { receiverId } = data.payload || {};
 
@@ -218,21 +226,13 @@ function initializeWebSocket(server) {
             return;
           }
 
-          targetSocket.send(
-            JSON.stringify({
-              type: "typing.start",
-              payload: {
-                userId: socket.user.userId,
-              },
-            }),
-          );
+          send(targetSocket, "typing.start", {
+            userId: connectedUserId,
+          });
 
           return;
         }
 
-        // --------------------------------------------------
-        // typing.stop
-        // --------------------------------------------------
         if (data.type === "typing.stop") {
           const { receiverId } = data.payload || {};
 
@@ -246,29 +246,17 @@ function initializeWebSocket(server) {
             return;
           }
 
-          targetSocket.send(
-            JSON.stringify({
-              type: "typing.stop",
-              payload: {
-                userId: socket.user.userId,
-              },
-            }),
-          );
+          send(targetSocket, "typing.stop", {
+            userId: connectedUserId,
+          });
 
           return;
         }
 
-        // --------------------------------------------------
-        // message.delivered
-        // --------------------------------------------------
         if (data.type === "message.delivered") {
           const { messageId } = data.payload || {};
 
-          if (!messageId) {
-            return;
-          }
-
-          if (!mongoose.Types.ObjectId.isValid(messageId)) {
+          if (!isValidObjectId(messageId)) {
             return;
           }
 
@@ -278,8 +266,7 @@ function initializeWebSocket(server) {
             return;
           }
 
-          // Sender cannot mark their own message as delivered
-          if (message.senderId.toString() === socket.user.userId.toString()) {
+          if (message.receiverId.toString() !== connectedUserId.toString()) {
             return;
           }
 
@@ -290,30 +277,18 @@ function initializeWebSocket(server) {
 
           const senderSocket = onlineUsers.get(message.senderId.toString());
 
-          if (!senderSocket) {
-            return;
-          }
-
-          senderSocket.send(
-            JSON.stringify({
-              type: "message.delivered",
-              payload: {
-                messageId: message._id,
-                deliveredAt: message.deliveredAt,
-              },
-            }),
-          );
+          send(senderSocket, "message.delivered", {
+            messageId: message._id,
+            deliveredAt: message.deliveredAt,
+          });
 
           return;
         }
 
-        // --------------------------------------------------
-        // conversation.read
-        // --------------------------------------------------
         if (data.type === "conversation.read") {
           const { conversationId } = data.payload || {};
 
-          if (!conversationId) {
+          if (!isValidObjectId(conversationId)) {
             return;
           }
 
@@ -322,7 +297,7 @@ function initializeWebSocket(server) {
           await Message.updateMany(
             {
               conversationId,
-              receiverId: socket.user.userId,
+              receiverId: connectedUserId,
               readAt: null,
             },
             {
@@ -334,43 +309,31 @@ function initializeWebSocket(server) {
 
           const message = await Message.findOne({
             conversationId,
-            receiverId: socket.user.userId,
-          }).select("senderId");
+            receiverId: connectedUserId,
+          })
+            .select("senderId")
+            .sort({ createdAt: -1 });
 
           if (!message) {
             return;
           }
 
-          const senderSocket = onlineUsers.get(message.senderId.toString());
+          const senderId = message.senderId.toString();
+          const senderSocket = onlineUsers.get(senderId);
 
-          if (!senderSocket) {
-            return;
-          }
-
-          senderSocket.send(
-            JSON.stringify({
-              type: "conversation.read",
-              payload: {
-                conversationId,
-                readAt,
-              },
-            }),
-          );
+          send(senderSocket, "conversation.read", {
+            conversationId,
+            senderId,
+            readAt,
+          });
 
           return;
         }
 
-        // --------------------------------------------------
-        // message.read
-        // --------------------------------------------------
         if (data.type === "message.read") {
           const { messageId } = data.payload || {};
 
-          if (!messageId) {
-            return;
-          }
-
-          if (!mongoose.Types.ObjectId.isValid(messageId)) {
+          if (!isValidObjectId(messageId)) {
             return;
           }
 
@@ -380,8 +343,7 @@ function initializeWebSocket(server) {
             return;
           }
 
-          // Only receiver can mark message as read
-          if (message.receiverId.toString() !== socket.user.userId.toString()) {
+          if (message.receiverId.toString() !== connectedUserId.toString()) {
             return;
           }
 
@@ -394,34 +356,18 @@ function initializeWebSocket(server) {
 
           const senderSocket = onlineUsers.get(message.senderId.toString());
 
-          if (!senderSocket) {
-            return;
-          }
-
-          senderSocket.send(
-            JSON.stringify({
-              type: "message.read",
-              payload: {
-                messageId: message._id,
-                readAt: message.readAt,
-              },
-            }),
-          );
+          send(senderSocket, "message.read", {
+            messageId: message._id,
+            readAt: message.readAt,
+          });
 
           return;
         }
 
-        // --------------------------------------------------
-        // message.delete
-        // --------------------------------------------------
         if (data.type === "message.delete") {
           const { messageId } = data.payload || {};
 
-          if (!messageId) {
-            return;
-          }
-
-          if (!mongoose.Types.ObjectId.isValid(messageId)) {
+          if (!isValidObjectId(messageId)) {
             return;
           }
 
@@ -431,7 +377,7 @@ function initializeWebSocket(server) {
             return;
           }
 
-          if (message.senderId.toString() !== socket.user.userId.toString()) {
+          if (message.senderId.toString() !== connectedUserId.toString()) {
             return;
           }
 
@@ -447,49 +393,60 @@ function initializeWebSocket(server) {
             deletedAt: message.deletedAt,
           };
 
-          socket.send(
-            JSON.stringify({
-              type: "message.deleted",
-              payload: deletedPayload,
-            }),
-          );
+          send(socket, "message.deleted", deletedPayload);
 
           const receiverSocket = onlineUsers.get(message.receiverId.toString());
 
-          if (!receiverSocket) {
-            return;
-          }
-
-          receiverSocket.send(
-            JSON.stringify({
-              type: "message.deleted",
-              payload: deletedPayload,
-            }),
-          );
+          send(receiverSocket, "message.deleted", deletedPayload);
 
           return;
         }
 
-        // --------------------------------------------------
-        // message.send
-        // --------------------------------------------------
         if (data.type === "message.send") {
           const { receiverId, text } = data.payload || {};
 
           clientMessageId = data.payload?.clientMessageId;
 
-          if (!receiverId || !text) {
-            socket.send(
-              JSON.stringify({
-                type: "message.error",
+          if (!receiverId || typeof text !== "string" || !text.trim()) {
+            send(
+              socket,
+              "message.error",
+              {},
+              {
                 message: "Recipient and text are required",
-              }),
+              },
             );
 
             return;
           }
 
-          const senderId = socket.user.userId;
+          if (!isValidObjectId(receiverId)) {
+            send(
+              socket,
+              "message.error",
+              {},
+              {
+                message: "Invalid recipient",
+              },
+            );
+
+            return;
+          }
+
+          const senderId = connectedUserId;
+
+          if (receiverId.toString() === senderId.toString()) {
+            send(
+              socket,
+              "message.error",
+              {},
+              {
+                message: "You cannot send a message to yourself",
+              },
+            );
+
+            return;
+          }
 
           const conversation = await findOrCreateConversation(
             senderId,
@@ -500,77 +457,67 @@ function initializeWebSocket(server) {
             conversationId: conversation._id,
             senderId,
             receiverId,
-            text,
+            text: text.trim(),
           });
 
-          // ACK sender
-          socket.send(
-            JSON.stringify({
-              type: "message.ack",
-              payload: {
-                clientMessageId,
-                messageId: message._id,
-                conversationId: conversation._id,
-                createdAt: message.createdAt,
-              },
-            }),
-          );
+          send(socket, "message.ack", {
+            clientMessageId,
+            messageId: message._id,
+            conversationId: conversation._id,
+            createdAt: message.createdAt,
+          });
 
-          // Receiver offline
-          const targetSocket = onlineUsers.get(receiverId);
+          const targetSocket = onlineUsers.get(receiverId.toString());
 
           if (!targetSocket) {
             return;
           }
 
-          // Send new message to receiver
-          targetSocket.send(
-            JSON.stringify({
-              type: "message.new",
-              payload: {
-                id: message._id,
-                conversationId: conversation._id,
-                senderId,
-                text: message.text,
-                createdAt: message.createdAt,
-              },
-            }),
-          );
+          send(targetSocket, "message.new", {
+            id: message._id,
+            conversationId: conversation._id,
+            senderId,
+            receiverId,
+            text: message.text,
+            createdAt: message.createdAt,
+          });
 
           return;
         }
-
-        // --------------------------------------------------
-        // Unknown message type
-        // --------------------------------------------------
-        return;
       } catch (error) {
         console.error("Message handling failed:", error);
 
-        socket.send(
-          JSON.stringify({
-            type: "message.error",
-            payload: {
-              clientMessageId,
-            },
+        send(
+          socket,
+          "message.error",
+          {
+            clientMessageId,
+          },
+          {
             message: "Failed to process WebSocket message",
-          }),
+          },
         );
       }
     });
 
-    // --------------------------------------------------
-    // Socket.close
-    // --------------------------------------------------
     socket.on("close", () => {
       const disconnectedUserId = socket.user.userId;
 
-      // Ignore old socket if a newer connection already exists
       if (onlineUsers.get(disconnectedUserId) !== socket) {
         return;
       }
 
       onlineUsers.delete(disconnectedUserId);
+
+      for (const [targetUserId, watchers] of presenceWatchers) {
+        if (watchers.has(disconnectedUserId)) {
+          watchers.delete(disconnectedUserId);
+
+          if (watchers.size === 0) {
+            presenceWatchers.delete(targetUserId);
+          }
+        }
+      }
 
       const watchers = presenceWatchers.get(disconnectedUserId);
 

@@ -4,8 +4,9 @@ function useWebSocket(activeConversationId) {
   const socketRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const shouldReconnectRef = useRef(true);
-
-  const activeConversationIdRef = useRef(null);
+  const activeConversationIdRef = useRef(
+    activeConversationId?.toString() || null,
+  );
 
   const [connected, setConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState(null);
@@ -15,32 +16,48 @@ function useWebSocket(activeConversationId) {
     activeConversationIdRef.current = activeConversationId?.toString() || null;
   }, [activeConversationId]);
 
-  useEffect(() => {
-    connect();
+  const connect = useCallback(() => {
+    if (!shouldReconnectRef.current) {
+      return;
+    }
 
-    return () => {
-      shouldReconnectRef.current = false;
-      socketRef.current?.close();
-      socketRef.current = null;
-      clearTimeout(reconnectTimerRef.current);
-    };
-  }, []);
+    if (
+      socketRef.current &&
+      (socketRef.current.readyState === WebSocket.OPEN ||
+        socketRef.current.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
 
-  function connect() {
     const socket = new WebSocket(import.meta.env.VITE_WS_URL);
 
     socketRef.current = socket;
 
     socket.onopen = () => {
+      if (socketRef.current !== socket) {
+        return;
+      }
+
       setConnected(true);
     };
 
     socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+      if (socketRef.current !== socket) {
+        return;
+      }
+
+      let data;
+
+      try {
+        data = JSON.parse(event.data);
+      } catch (error) {
+        console.error("❌ Invalid WebSocket message:", error);
+        return;
+      }
 
       if (data.type === "message.new") {
         const messageId = data.payload?.id;
-        const conversationId = data.payload?.conversationId.toString();
+        const conversationId = data.payload?.conversationId?.toString();
 
         if (messageId && socket.readyState === WebSocket.OPEN) {
           socket.send(
@@ -64,171 +81,169 @@ function useWebSocket(activeConversationId) {
         }
       }
 
-      setLastMessage(data);
-
       if (data.type === "conversation.unread") {
         const counts = {};
 
-        data.payload.counts.forEach((item) => {
-          counts[item._id.toString()] = item.count;
-        });
+        if (Array.isArray(data.payload?.counts)) {
+          data.payload.counts.forEach((item) => {
+            if (item?._id != null) {
+              counts[item._id.toString()] = item.count;
+            }
+          });
+        }
 
         setUnreadCounts(counts);
       }
+
+      setLastMessage(data);
     };
 
     socket.onerror = (error) => {
+      if (socketRef.current !== socket) {
+        return;
+      }
+
       console.error("❌ WebSocket error:", error);
     };
 
     socket.onclose = () => {
+      if (socketRef.current !== socket) {
+        return;
+      }
+
+      socketRef.current = null;
       setConnected(false);
 
       if (!shouldReconnectRef.current) {
         return;
       }
 
+      clearTimeout(reconnectTimerRef.current);
+
       reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
         connect();
       }, 2000);
     };
-  }
+  }, []);
 
-  function sendMessage(receiverId, text, clientMessageId) {
-    if (!socketRef.current) {
-      return;
-    }
+  useEffect(() => {
+    shouldReconnectRef.current = true;
+    connect();
 
-    if (socketRef.current.readyState !== WebSocket.OPEN) {
-      console.warn("WebSocket is not connected");
-      return;
-    }
+    return () => {
+      shouldReconnectRef.current = false;
 
-    const payload = {
-      type: "message.send",
-      payload: {
-        receiverId,
-        text,
-        clientMessageId,
-      },
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+
+      const socket = socketRef.current;
+      socketRef.current = null;
+
+      if (socket) {
+        socket.close();
+      }
+
+      setConnected(false);
     };
+  }, [connect]);
 
-    socketRef.current.send(JSON.stringify(payload));
-  }
+  const send = useCallback((message) => {
+    const socket = socketRef.current;
 
-  const subscribeToPresence = useCallback((userId) => {
-    if (!socketRef.current) {
-      return;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return false;
     }
 
-    if (socketRef.current.readyState !== WebSocket.OPEN) {
-      return;
-    }
+    socket.send(JSON.stringify(message));
+    return true;
+  }, []);
 
-    socketRef.current.send(
-      JSON.stringify({
+  const sendMessage = useCallback(
+    (receiverId, text, clientMessageId) => {
+      return send({
+        type: "message.send",
+        payload: {
+          receiverId,
+          text,
+          clientMessageId,
+        },
+      });
+    },
+    [send],
+  );
+
+  const subscribeToPresence = useCallback(
+    (userId) => {
+      return send({
         type: "presence.subscribe",
         payload: {
           userId,
         },
-      }),
-    );
-  }, []);
+      });
+    },
+    [send],
+  );
 
-  const unsubscribePresence = useCallback((userId) => {
-    if (!socketRef.current) {
-      return;
-    }
-
-    if (socketRef.current.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    socketRef.current.send(
-      JSON.stringify({
+  const unsubscribePresence = useCallback(
+    (userId) => {
+      return send({
         type: "presence.unsubscribe",
         payload: {
           userId,
         },
-      }),
-    );
-  }, []);
+      });
+    },
+    [send],
+  );
 
-  const sendTypingStart = useCallback((receiverId) => {
-    if (!socketRef.current) {
-      return;
-    }
-
-    if (socketRef.current.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    socketRef.current.send(
-      JSON.stringify({
+  const sendTypingStart = useCallback(
+    (receiverId) => {
+      return send({
         type: "typing.start",
         payload: {
           receiverId,
         },
-      }),
-    );
-  }, []);
+      });
+    },
+    [send],
+  );
 
-  const sendTypingStop = useCallback((receiverId) => {
-    if (!socketRef.current) {
-      return;
-    }
-
-    if (socketRef.current.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    socketRef.current.send(
-      JSON.stringify({
+  const sendTypingStop = useCallback(
+    (receiverId) => {
+      return send({
         type: "typing.stop",
         payload: {
           receiverId,
         },
-      }),
-    );
-  }, []);
+      });
+    },
+    [send],
+  );
 
-  const sendMessageRead = useCallback((messageId) => {
-    if (!socketRef.current) {
-      return;
-    }
-
-    if (socketRef.current.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    socketRef.current.send(
-      JSON.stringify({
+  const sendMessageRead = useCallback(
+    (messageId) => {
+      return send({
         type: "message.read",
         payload: {
           messageId,
         },
-      }),
-    );
-  }, []);
+      });
+    },
+    [send],
+  );
 
-  const sendConversationRead = useCallback((conversationId) => {
-    if (!socketRef.current) {
-      return;
-    }
-
-    if (socketRef.current.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    socketRef.current.send(
-      JSON.stringify({
+  const sendConversationRead = useCallback(
+    (conversationId) => {
+      return send({
         type: "conversation.read",
         payload: {
           conversationId,
         },
-      }),
-    );
-  }, []);
+      });
+    },
+    [send],
+  );
 
   const markConversationUnreadAsRead = useCallback((conversationId) => {
     setUnreadCounts((previous) => ({
@@ -237,25 +252,17 @@ function useWebSocket(activeConversationId) {
     }));
   }, []);
 
-  const sendMessageDelete = useCallback((messageId) => {
-    if (!socketRef.current) {
-      return;
-    }
-
-    if (socketRef.current.readyState !== WebSocket.OPEN) {
-      console.warn("WebSocket is not connected");
-      return;
-    }
-
-    socketRef.current.send(
-      JSON.stringify({
+  const sendMessageDelete = useCallback(
+    (messageId) => {
+      return send({
         type: "message.delete",
         payload: {
           messageId,
         },
-      }),
-    );
-  }, []);
+      });
+    },
+    [send],
+  );
 
   return {
     connected,

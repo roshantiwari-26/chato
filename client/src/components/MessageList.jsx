@@ -1,18 +1,31 @@
-import { useRef, useEffect, memo, useCallback } from "react";
+import { useEffect, useRef, memo, useCallback } from "react";
 import styles from "./ChatWindow.module.css";
 
-const getMessageId = (message) =>
-  message.id?.toString() ||
-  message._id?.toString() ||
-  message.clientMessageId?.toString();
+const getNormalizedId = (value) => {
+  if (value == null) {
+    return null;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return value.toString();
+  }
+
+  return (
+    value._id?.toString() ||
+    value.id?.toString() ||
+    value.clientMessageId?.toString() ||
+    null
+  );
+};
 
 const MessageItem = memo(({ message, isMine, onDelete }) => {
   const isDeleted = Boolean(message.deletedAt);
-
-  const messageId = getMessageId(message);
+  const messageId = getNormalizedId(message);
 
   const handleDelete = useCallback(() => {
-    onDelete(messageId);
+    if (messageId) {
+      onDelete(messageId);
+    }
   }, [messageId, onDelete]);
 
   const formattedTime = message.createdAt
@@ -21,6 +34,24 @@ const MessageItem = memo(({ message, isMine, onDelete }) => {
         minute: "2-digit",
       })
     : "";
+
+  let statusText = "";
+  let statusClass = "";
+
+  if (isMine) {
+    if (message.status === "sending") {
+      statusText = "Sending...";
+    } else if (message.status === "failed") {
+      statusText = "Failed";
+    } else if (message.readAt) {
+      statusText = "✔✔";
+      statusClass = styles.readStatus;
+    } else if (message.deliveredAt) {
+      statusText = "✓✓";
+    } else {
+      statusText = "✓";
+    }
+  }
 
   return (
     <div
@@ -34,13 +65,13 @@ const MessageItem = memo(({ message, isMine, onDelete }) => {
         }`}
       >
         {isDeleted ? (
-          <p className={styles.deletedMessage}>This message was deleted</p>
+          <p className={styles.deletedMessage}>This message was deleted </p>
         ) : (
           <p>{message.text}</p>
         )}
-
+        ```
         <div className={styles.messageMeta}>
-          {isMine && !isDeleted && (
+          {isMine && !isDeleted && messageId && (
             <button
               type="button"
               className={styles.deleteButton}
@@ -59,20 +90,8 @@ const MessageItem = memo(({ message, isMine, onDelete }) => {
           )}
 
           {isMine && (
-            <span
-              className={`${styles.messageStatus} ${
-                message.readAt ? styles.readStatus : ""
-              }`}
-            >
-              {message.status === "sending"
-                ? "Sending..."
-                : message.status === "failed"
-                  ? "Failed"
-                  : message.readAt
-                    ? "✔✔"
-                    : message.deliveredAt
-                      ? "✓✓"
-                      : "✓"}
+            <span className={`${styles.messageStatus} ${statusClass}`}>
+              {statusText}
             </span>
           )}
         </div>
@@ -85,19 +104,31 @@ MessageItem.displayName = "MessageItem";
 
 function MessageList({ messages = [], currentUserId, sendMessageDelete }) {
   const messagesEndRef = useRef(null);
+  const previousMessageCountRef = useRef(messages.length);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }, [messages]);
+    const previousCount = previousMessageCountRef.current;
+
+    if (messages.length > previousCount) {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: "smooth",
+      });
+    }
+
+    previousMessageCountRef.current = messages.length;
+  }, [messages.length]);
 
   return (
     <article className={styles.messagesArticle}>
       {messages.map((message) => {
-        const senderId = message.senderId?.toString();
-        const isMine = senderId === currentUserId?.toString();
-        const stableKey = message.clientMessageId || getMessageId(message);
+        const senderId = getNormalizedId(message.senderId);
+        const normalizedCurrentUserId = getNormalizedId(currentUserId);
+        const isMine = senderId === normalizedCurrentUserId;
+
+        const stableKey =
+          getNormalizedId(message.clientMessageId) ||
+          getNormalizedId(message._id) ||
+          getNormalizedId(message.id);
 
         return (
           <MessageItem
@@ -108,6 +139,7 @@ function MessageList({ messages = [], currentUserId, sendMessageDelete }) {
           />
         );
       })}
+
       <div ref={messagesEndRef} />
     </article>
   );

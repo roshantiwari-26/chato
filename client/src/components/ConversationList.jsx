@@ -1,7 +1,19 @@
-import { memo, useState, useEffect } from "react";
+import { memo, useEffect, useState } from "react";
 import styles from "./ConversationList.module.css";
 import { getConversations } from "../api/conversations";
 import { searchUsers } from "../api/users";
+
+const getNormalizedId = (value) => {
+  if (value == null) {
+    return null;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return value.toString();
+  }
+
+  return value._id?.toString() || value.id?.toString() || null;
+};
 
 function ConversationList({
   onSelectConversation,
@@ -16,54 +28,89 @@ function ConversationList({
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
 
+  const currentUserId = getNormalizedId(currentUser);
+  const selectedId = getNormalizedId(selectedConversationId);
+
   useEffect(() => {
+    let isCancelled = false;
+
     async function loadConversations() {
       try {
         const data = await getConversations();
+
+        if (isCancelled) {
+          return;
+        }
+
         setConversations(data.conversations || []);
       } catch (error) {
-        console.error("Failed to load conversations:", error);
+        if (!isCancelled) {
+          console.error("Failed to load conversations:", error);
+        }
       }
     }
 
     loadConversations();
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    async function search() {
-      try {
-        setSearching(true);
-        const data = await searchUsers(searchQuery);
-        setSearchResults(data.users || []);
-      } catch (error) {
-        console.error("Failed to search users:", error);
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }
+    const query = searchQuery.trim();
 
-    if (!searchQuery.trim()) {
+    if (!query) {
       setSearchResults([]);
+      setSearching(false);
       return;
     }
 
-    const timer = setTimeout(() => {
-      search();
+    let isCancelled = false;
+
+    const timer = setTimeout(async () => {
+      try {
+        setSearching(true);
+
+        const data = await searchUsers(query);
+
+        if (isCancelled) {
+          return;
+        }
+
+        setSearchResults(data.users || []);
+      } catch (error) {
+        if (!isCancelled) {
+          console.error("Failed to search users:", error);
+          setSearchResults([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setSearching(false);
+        }
+      }
     }, 400);
 
     return () => {
+      isCancelled = true;
       clearTimeout(timer);
     };
   }, [searchQuery]);
 
+  function handleStartConversation(user) {
+    onStartConversation(user);
+    setSearchQuery("");
+  }
+
   return (
     <aside className={styles.conversationList}>
+      {" "}
       <div className={styles.conversationListHeader}>
+        {" "}
         <div className={styles.headerTop}>
-          <h2>Chats</h2>
+          {" "}
+          <h2>Chats</h2>{" "}
         </div>
-
         <div className={styles.searchWrapper}>
           <input
             type="search"
@@ -71,6 +118,7 @@ function ConversationList({
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             className={styles.searchInput}
+            autoComplete="off"
           />
 
           {searchQuery.trim() && (
@@ -82,22 +130,20 @@ function ConversationList({
               ) : (
                 searchResults.map((user) => (
                   <button
-                    key={user._id}
+                    key={getNormalizedId(user)}
                     type="button"
                     className={styles.searchResult}
-                    onClick={() => {
-                      onStartConversation(user);
-                      setSearchQuery("");
-                    }}
+                    onClick={() => handleStartConversation(user)}
                   >
                     <div className={styles.avatar}>
-                      {user.username?.charAt(0).toUpperCase()}
+                      {user.username?.charAt(0).toUpperCase() || "?"}
                     </div>
 
                     <div className={styles.conversationInfo}>
                       <strong className={styles.username}>
                         {user.username}
                       </strong>
+
                       <span className={styles.email}>{user.email}</span>
                     </div>
                   </button>
@@ -107,7 +153,6 @@ function ConversationList({
           )}
         </div>
       </div>
-
       <div className={styles.conversationItems}>
         {conversations.length === 0 ? (
           <div className={styles.emptyState}>
@@ -116,33 +161,37 @@ function ConversationList({
           </div>
         ) : (
           conversations.map((conversation) => {
+            const conversationId = getNormalizedId(conversation);
+
             const otherUser = conversation.participants?.find(
-              (user) => user._id !== currentUser?.id,
+              (user) => getNormalizedId(user) !== currentUserId,
             );
 
-            const selected = conversation._id === selectedConversationId;
-            const unread = unreadCounts?.[conversation._id];
+            const selected = conversationId === selectedId;
+            const unread = unreadCounts?.[conversationId] || 0;
 
             return (
               <button
-                key={conversation._id}
+                key={conversationId}
+                type="button"
                 className={`${styles.conversationItem} ${
                   selected ? styles.selected : ""
                 }`}
                 onClick={() => {
                   onSelectConversation(conversation);
-                  markConversationUnreadAsRead(conversation._id);
+                  markConversationUnreadAsRead(conversationId);
                 }}
               >
                 <div className={styles.avatar}>
-                  {otherUser?.username?.charAt(0).toUpperCase()}
+                  {otherUser?.username?.charAt(0).toUpperCase() || "?"}
                 </div>
 
                 <div className={styles.conversationInfo}>
                   <div className={styles.conversationTop}>
                     <strong className={styles.username}>
-                      {otherUser?.username}
+                      {otherUser?.username || "Unknown User"}
                     </strong>
+
                     {unread > 0 && (
                       <span className={styles.unreadCount}>
                         {unread > 99 ? "99+" : unread}
@@ -150,7 +199,7 @@ function ConversationList({
                     )}
                   </div>
 
-                  <span className={styles.email}>{otherUser?.email}</span>
+                  <span className={styles.email}>{otherUser?.email || ""}</span>
                 </div>
               </button>
             );

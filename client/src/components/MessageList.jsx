@@ -69,7 +69,6 @@ const MessageItem = memo(({ message, isMine, onDelete }) => {
         ) : (
           <p>{message.text}</p>
         )}
-        ```
         <div className={styles.messageMeta}>
           {isMine && !isDeleted && messageId && (
             <button

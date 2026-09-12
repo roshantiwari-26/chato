@@ -93,6 +93,7 @@ function initializeWebSocket(server) {
   }
 
   server.on("upgrade", (request, socket, head) => {
+    console.log("🔵 WebSocket upgrade request:", request.url);
     try {
       const cookieHeader = request.headers.cookie;
 
@@ -101,7 +102,7 @@ function initializeWebSocket(server) {
         return;
       }
 
-      const cookies = cookie.parse(cookieHeader);
+      const cookies = cookie.parseCookie(cookieHeader);
       const token = cookies.accessToken;
 
       if (!token) {

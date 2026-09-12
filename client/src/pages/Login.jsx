@@ -46,10 +46,7 @@ function Login() {
     } catch (error) {
       console.error("Login failed:", error);
 
-      const displayError =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Invalid email or password. Please try again.";
+      const displayError = "Invalid email or password. Please try again.";
 
       setErrorMessage(displayError);
     } finally {

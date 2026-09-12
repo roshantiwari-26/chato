@@ -7,7 +7,6 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Checking existing login session
   useEffect(() => {
     async function checkAuthentication() {
       try {

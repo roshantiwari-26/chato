@@ -91,7 +91,9 @@ async function login(req, res, next) {
 
 async function logout(req, res, next) {
   try {
-    res.clearCookie("accessToken").json({ message: "Logout successfully" });
+    res
+      .clearCookie("accessToken", { secure: true, httpOnly: true })
+      .json({ message: "Logout successfully" });
   } catch (err) {
     next(err);
   }

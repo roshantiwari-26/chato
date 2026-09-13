@@ -92,7 +92,11 @@ async function login(req, res, next) {
 async function logout(req, res, next) {
   try {
     res
-      .clearCookie("accessToken", { secure: true, httpOnly: true })
+      .clearCookie("accessToken", {
+        secure: true,
+        httpOnly: true,
+        sameSite: "none",
+      })
       .json({ message: "Logout successfully" });
   } catch (err) {
     next(err);

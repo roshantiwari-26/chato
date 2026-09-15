@@ -140,3 +140,13 @@
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+.cookieNotice {
+  position: absolute;
+  top: 10px;
+  border: 2px solid var(--border);
+  margin: 8px;
+  padding: 8px;
+  background: var(--glass-surface);
+  line-height: 1.6;
+}

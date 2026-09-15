@@ -60,6 +60,20 @@ function Login() {
 
   return (
     <main className={styles.loginPage}>
+      <div className={styles.cookieNotice} role="note">
+        <strong>⚠️ Browser cookies required ⚠️</strong>
+        <p>
+          ChatO uses cookies for authentication and real-time messaging. If your
+          browser blocks third-party cookies, some features may not work
+          correctly. Please allow third-party cookies for ChatO.{" "}
+          <a
+            href="https://support.google.com/accounts/answer/61416?hl=en&co=GENIE.Platform%3DDesktop"
+            target="_blank"
+          >
+            Learn how
+          </a>
+        </p>
+      </div>
       <section className={styles.loginCard}>
         <div className={styles.header}>
           <h1>

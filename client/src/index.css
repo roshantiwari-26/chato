@@ -153,6 +153,7 @@ body {
   background: var(--surface);
   color: var(--text-primary);
   display: flex;
+  position: relative;
   flex-direction: column;
   box-shadow: var(--shadow-lg);
   border-left: 1px solid var(--border);

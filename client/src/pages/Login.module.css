@@ -146,7 +146,13 @@
   top: 10px;
   border: 2px solid var(--border);
   margin: 8px;
-  padding: 8px;
+  padding: 4px;
   background: var(--glass-surface);
-  line-height: 1.6;
+  line-height: 1.2;
+}
+
+.cookieNotice strong {
+  display: block;
+  margin: 8px auto;
+  text-align: center;
 }

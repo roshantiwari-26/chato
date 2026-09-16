@@ -2,6 +2,11 @@ import { useEffect, useState, useCallback } from "react";
 import MessageInput from "./MessageInput";
 import MessageList from "./MessageList";
 import { getMessages } from "../api/conversations";
+import {
+  useWebSocketActions,
+  useWebSocketConnection,
+  useWebSocketEvents,
+} from "../context/WebSocketContext";
 import styles from "./ChatWindow.module.css";
 
 const getNormalizedId = (value) => {
@@ -77,21 +82,22 @@ const mergeMessages = (existingMessages, incomingMessages) => {
   return merged.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 };
 
-function ChatWindow({
-  conversation,
-  sendMessage,
-  connected,
-  lastMessage,
-  currentUser,
-  subscribeToPresence,
-  unsubscribePresence,
-  sendTypingStart,
-  sendTypingStop,
-  sendMessageRead,
-  sendConversationRead,
-  sendMessageDelete,
-  onBack,
-}) {
+function ChatWindow({ conversation, currentUser, onBack }) {
+  const {
+    sendMessage,
+    subscribeToPresence,
+    unsubscribePresence,
+    sendTypingStart,
+    sendTypingStop,
+    sendMessageRead,
+    sendConversationRead,
+    sendMessageDelete,
+  } = useWebSocketActions();
+
+  const { connected } = useWebSocketConnection();
+
+  const { lastMessage } = useWebSocketEvents();
+
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [otherUserOnline, setOtherUserOnline] = useState(false);

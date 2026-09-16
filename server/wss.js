@@ -461,6 +461,9 @@ function initializeWebSocket(server) {
             text: text.trim(),
           });
 
+          conversation.updatedAt = new Date();
+          await conversation.save();
+
           send(socket, "message.ack", {
             clientMessageId,
             messageId: message._id,

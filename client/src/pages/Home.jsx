@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import useWebSocket from "../hooks/useWebsocket";
+import { WebSocketProvider } from "../context/WebSocketContext";
 
 import ConversationList from "../components/ConversationList";
 import ChatWindow from "../components/ChatWindow";
@@ -8,38 +8,55 @@ import Header from "../components/Header";
 
 import styles from "../App.module.css";
 
+const HomeContent = memo(function HomeContent({
+  currentUser,
+  selectedConversation,
+  setSelectedConversation,
+  handleStartConversation,
+}) {
+  return (
+    <div className={styles.app}>
+      <Header currentUser={currentUser} />
+
+      <main
+        className={`${styles.chatLayout} ${
+          selectedConversation ? styles.chatSelected : ""
+        }`}
+      >
+        <div className={styles.sidebarSection}>
+          <ConversationList
+            currentUser={currentUser}
+            selectedConversationId={selectedConversation?._id}
+            onSelectConversation={setSelectedConversation}
+            onStartConversation={handleStartConversation}
+          />
+        </div>
+
+        <div className={styles.chatSection}>
+          <ChatWindow
+            currentUser={currentUser}
+            conversation={selectedConversation}
+            onBack={() => setSelectedConversation(null)}
+          />
+        </div>
+      </main>
+    </div>
+  );
+});
+
 function Home() {
   const { currentUser } = useAuth();
   const [selectedConversation, setSelectedConversation] = useState(null);
 
-  const {
-    connected,
-    sendMessage,
-    lastMessage,
-    unreadCounts,
-    markConversationUnreadAsRead,
-    subscribeToPresence,
-    unsubscribePresence,
-    sendTypingStart,
-    sendTypingStop,
-    sendMessageRead,
-    sendConversationRead,
-    sendMessageDelete,
-  } = useWebSocket(selectedConversation?._id);
-
-  async function handleStartConversation(user) {
+  const handleStartConversation = useCallback(async (user) => {
     try {
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/conversations`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
-            userId: user._id,
-          }),
+          body: JSON.stringify({ userId: user._id }),
         },
       );
 
@@ -55,47 +72,17 @@ function Home() {
       console.error("Failed to start conversation:", error);
       return null;
     }
-  }
+  }, []);
 
   return (
-    <div className={styles.app}>
-      <Header currentUser={currentUser} />
-
-      <main
-        className={`${styles.chatLayout} ${
-          selectedConversation ? styles.chatSelected : ""
-        }`}
-      >
-        <div className={styles.sidebarSection}>
-          <ConversationList
-            currentUser={currentUser}
-            selectedConversationId={selectedConversation?._id}
-            onSelectConversation={setSelectedConversation}
-            unreadCounts={unreadCounts}
-            markConversationUnreadAsRead={markConversationUnreadAsRead}
-            onStartConversation={handleStartConversation}
-          />
-        </div>
-
-        <div className={styles.chatSection}>
-          <ChatWindow
-            currentUser={currentUser}
-            conversation={selectedConversation}
-            sendMessage={sendMessage}
-            connected={connected}
-            lastMessage={lastMessage}
-            subscribeToPresence={subscribeToPresence}
-            unsubscribePresence={unsubscribePresence}
-            sendTypingStart={sendTypingStart}
-            sendTypingStop={sendTypingStop}
-            sendMessageRead={sendMessageRead}
-            sendConversationRead={sendConversationRead}
-            sendMessageDelete={sendMessageDelete}
-            onBack={() => setSelectedConversation(null)}
-          />
-        </div>
-      </main>
-    </div>
+    <WebSocketProvider activeConversationId={selectedConversation?._id}>
+      <HomeContent
+        currentUser={currentUser}
+        selectedConversation={selectedConversation}
+        setSelectedConversation={setSelectedConversation}
+        handleStartConversation={handleStartConversation}
+      />
+    </WebSocketProvider>
   );
 }
 

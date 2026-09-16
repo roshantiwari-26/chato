@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from "react";
 import styles from "./ConversationList.module.css";
 import { getConversations } from "../api/conversations";
 import { searchUsers } from "../api/users";
+import { useWebSocketUnread } from "../context/WebSocketContext";
 
 const getNormalizedId = (value) => {
   if (value == null) {
@@ -19,10 +20,10 @@ function ConversationList({
   onSelectConversation,
   currentUser,
   selectedConversationId,
-  unreadCounts,
-  markConversationUnreadAsRead,
   onStartConversation,
 }) {
+  const { unreadCounts, markConversationUnreadAsRead } = useWebSocketUnread();
+
   const [conversations, setConversations] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);

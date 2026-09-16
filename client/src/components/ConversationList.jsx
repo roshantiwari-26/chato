@@ -2,7 +2,10 @@ import { memo, useEffect, useState } from "react";
 import styles from "./ConversationList.module.css";
 import { getConversations } from "../api/conversations";
 import { searchUsers } from "../api/users";
-import { useWebSocketUnread } from "../context/WebSocketContext";
+import {
+  useWebSocketUnread,
+  useWebSocketEvents,
+} from "../context/WebSocketContext";
 
 const getNormalizedId = (value) => {
   if (value == null) {
@@ -23,6 +26,7 @@ function ConversationList({
   onStartConversation,
 }) {
   const { unreadCounts, markConversationUnreadAsRead } = useWebSocketUnread();
+  const { lastMessage } = useWebSocketEvents();
 
   const [conversations, setConversations] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,6 +101,43 @@ function ConversationList({
       clearTimeout(timer);
     };
   }, [searchQuery]);
+
+  useEffect(() => {
+    if (!lastMessage) {
+      return;
+    }
+
+    const { type, payload } = lastMessage;
+
+    if (type !== "message.new" && type !== "message.ack") {
+      return;
+    }
+
+    const conversationId = payload?.conversationId?.toString();
+
+    if (!conversationId) {
+      return;
+    }
+
+    setConversations((previousConversations) => {
+      const index = previousConversations.findIndex(
+        (conversation) => getNormalizedId(conversation) === conversationId,
+      );
+
+      if (index === -1) {
+        return previousConversations;
+      }
+
+      if (index === 0) {
+        return previousConversations;
+      }
+
+      const updatedConversations = [...previousConversations];
+      const [conversation] = updatedConversations.splice(index, 1);
+
+      return [conversation, ...updatedConversations];
+    });
+  }, [lastMessage]);
 
   async function handleStartConversation(user) {
     const conversation = await onStartConversation(user);

@@ -18,83 +18,85 @@ const getNormalizedId = (value) => {
   );
 };
 
-const MessageItem = memo(({ message, isMine, onContextMenu }) => {
-  const isDeleted = Boolean(message.deletedAt);
-  const messageId = getNormalizedId(message);
+const MessageItem = memo(
+  ({ message, isMine, onContextMenu, isContextMenuOpen }) => {
+    const isDeleted = Boolean(message.deletedAt);
+    const messageId = getNormalizedId(message);
 
-  const formattedTime = message.createdAt
-    ? new Date(message.createdAt).toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : "";
+    const formattedTime = message.createdAt
+      ? new Date(message.createdAt).toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      : "";
 
-  let statusText = "";
-  let statusClass = "";
+    let statusText = "";
+    let statusClass = "";
 
-  if (isMine) {
-    if (message.status === "sending") {
-      statusText = "Sending...";
-    } else if (message.status === "failed") {
-      statusText = "Failed";
-    } else if (message.readAt) {
-      statusText = "✔✔";
-      statusClass = styles.readStatus;
-    } else if (message.deliveredAt) {
-      statusText = "✓✓";
-    } else {
-      statusText = "✓";
+    if (isMine) {
+      if (message.status === "sending") {
+        statusText = "Sending...";
+      } else if (message.status === "failed") {
+        statusText = "Failed";
+      } else if (message.readAt) {
+        statusText = "✔✔";
+        statusClass = styles.readStatus;
+      } else if (message.deliveredAt) {
+        statusText = "✓✓";
+      } else {
+        statusText = "✓";
+      }
     }
-  }
 
-  return (
-    <div
-      className={`${styles.messageRow} ${
-        isMine ? styles.messageRowMine : styles.messageRowOther
-      }`}
-    >
+    return (
       <div
-        className={`${styles.messageBubble} ${
-          isMine ? styles.messageBubbleMine : styles.messageBubbleOther
+        className={`${styles.messageRow} ${
+          isMine ? styles.messageRowMine : styles.messageRowOther
         }`}
-        onContextMenu={
-          isDeleted
-            ? (event) => event.preventDefault()
-            : (event) => onContextMenu(event, message)
-        }
       >
-        {message.replyTo && (
-          <div className={styles.replyMessage}>
-            <span className={styles.replyMessageLabel}>
-              {isMine ? "Reply" : "You"}
-            </span>
-            <p>
-              {message.replyTo.deletedAt
-                ? "This message was deleted"
-                : message.replyTo.text}
-            </p>
-          </div>
-        )}
-        {isDeleted ? (
-          <p className={styles.deletedMessage}>This message was deleted </p>
-        ) : (
-          <p>{message.text}</p>
-        )}
-        <div className={styles.messageMeta}>
-          {formattedTime && (
-            <span className={styles.messageTime}>{formattedTime}</span>
+        <div
+          className={`${styles.messageBubble} ${
+            isMine ? styles.messageBubbleMine : styles.messageBubbleOther
+          } ${isContextMenuOpen ? styles.messageBubbleSelected : ""}`}
+          onContextMenu={
+            isDeleted
+              ? (event) => event.preventDefault()
+              : (event) => onContextMenu(event, message)
+          }
+        >
+          {message.replyTo && (
+            <div className={styles.replyMessage}>
+              <span className={styles.replyMessageLabel}>
+                {isMine ? "Reply" : "You"}
+              </span>
+              <p>
+                {message.replyTo.deletedAt
+                  ? "This message was deleted"
+                  : message.replyTo.text}
+              </p>
+            </div>
           )}
+          {isDeleted ? (
+            <p className={styles.deletedMessage}>This message was deleted </p>
+          ) : (
+            <p>{message.text}</p>
+          )}
+          <div className={styles.messageMeta}>
+            {formattedTime && (
+              <span className={styles.messageTime}>{formattedTime}</span>
+            )}
 
-          {isMine && (
-            <span className={`${styles.messageStatus} ${statusClass}`}>
-              <strong>{statusText}</strong>
-            </span>
-          )}
+            {isMine && (
+              <span className={`${styles.messageStatus} ${statusClass}`}>
+                <strong>{statusText}</strong>
+              </span>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
 
 MessageItem.displayName = "MessageItem";
 
@@ -113,15 +115,33 @@ function MessageList({
       getNormalizedId(currentUserId)
     : false;
 
-  const handleContextMenu = useCallback((event, message) => {
-    event.preventDefault();
+  const handleContextMenu = useCallback(
+    (event, message) => {
+      event.preventDefault();
 
-    setContextMenu({
-      x: event.clientX,
-      y: event.clientY,
-      message,
-    });
-  }, []);
+      const rect = event.currentTarget.getBoundingClientRect();
+
+      const isMine =
+        getNormalizedId(message.senderId) === getNormalizedId(currentUserId);
+
+      console.log({
+        rectTop: rect.top,
+        rectBottom: rect.bottom,
+        rectHeight: rect.height,
+        clientY: event.clientY,
+      });
+
+      setContextMenu({
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+        isMine,
+        message,
+      });
+    },
+    [currentUserId],
+  );
 
   const handleContextMenuDelete = useCallback(() => {
     const messageId = getNormalizedId(contextMenu?.message);
@@ -162,6 +182,8 @@ function MessageList({
     previousMessageCountRef.current = messages.length;
   }, [messages.length]);
 
+  console.log("Context menu state:", contextMenu);
+
   return (
     <article className={styles.messagesArticle}>
       {messages.map((message) => {
@@ -180,6 +202,10 @@ function MessageList({
             message={message}
             isMine={isMine}
             onContextMenu={handleContextMenu}
+            isContextMenuOpen={
+              contextMenu &&
+              getNormalizedId(contextMenu.message) === getNormalizedId(message)
+            }
           />
         );
       })}
@@ -189,7 +215,9 @@ function MessageList({
         <div
           className={styles.contextMenu}
           style={{
-            left: contextMenu.x,
+            left: contextMenu.isMine
+              ? contextMenu.x - 148
+              : contextMenu.x + contextMenu.width + 8,
             top: contextMenu.y,
           }}
         >

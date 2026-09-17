@@ -251,17 +251,28 @@
   white-space: nowrap;
 }
 
+.messageBubbleSelected {
+  box-shadow:
+    0 0 3px 2px var(--text-primary),
+    var(--shadow-sm);
+}
+
 @media (max-width: 768px) {
   .backButton {
     display: grid;
     place-items: center;
     width: 32px;
     height: 32px;
+    padding: 0;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface);
     color: var(--text-primary);
-    font-size: 18px;
     cursor: pointer;
+  }
+
+  .backButton svg {
+    width: 18px;
+    height: 18px;
   }
 }

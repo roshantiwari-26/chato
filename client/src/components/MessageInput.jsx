@@ -7,6 +7,8 @@ function MessageInput({
   receiverId,
   sendTypingStart,
   sendTypingStop,
+  replyingTo,
+  onCancelReply,
 }) {
   const [text, setText] = useState("");
 
@@ -65,7 +67,7 @@ function MessageInput({
       }
 
       stopTyping();
-      onSend(trimmedText);
+      onSend(trimmedText, replyingTo);
       setText("");
     },
     [text, connected, stopTyping, onSend],
@@ -97,6 +99,23 @@ function MessageInput({
 
   return (
     <form className={styles.messageInput} onSubmit={handleSubmit}>
+      {replyingTo && (
+        <div className={styles.replyPreview}>
+          <div className={styles.replyPreviewContent}>
+            <span className={styles.replyPreviewLabel}>Replying to</span>
+            <p>{replyingTo.text}</p>
+          </div>
+
+          <button
+            type="button"
+            className={styles.replyPreviewClose}
+            onClick={onCancelReply}
+            aria-label="Cancel reply"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <input
         className={styles.input}
         type="text"

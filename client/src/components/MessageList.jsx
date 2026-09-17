@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo, useCallback } from "react";
+import { useEffect, useRef, memo, useCallback, useState } from "react";
 import styles from "./ChatWindow.module.css";
 
 const getNormalizedId = (value) => {
@@ -18,15 +18,9 @@ const getNormalizedId = (value) => {
   );
 };
 
-const MessageItem = memo(({ message, isMine, onDelete }) => {
+const MessageItem = memo(({ message, isMine, onContextMenu }) => {
   const isDeleted = Boolean(message.deletedAt);
   const messageId = getNormalizedId(message);
-
-  const handleDelete = useCallback(() => {
-    if (messageId) {
-      onDelete(messageId);
-    }
-  }, [messageId, onDelete]);
 
   const formattedTime = message.createdAt
     ? new Date(message.createdAt).toLocaleTimeString([], {
@@ -63,34 +57,37 @@ const MessageItem = memo(({ message, isMine, onDelete }) => {
         className={`${styles.messageBubble} ${
           isMine ? styles.messageBubbleMine : styles.messageBubbleOther
         }`}
+        onContextMenu={
+          isDeleted
+            ? (event) => event.preventDefault()
+            : (event) => onContextMenu(event, message)
+        }
       >
+        {message.replyTo && (
+          <div className={styles.replyMessage}>
+            <span className={styles.replyMessageLabel}>
+              {isMine ? "Reply" : "You"}
+            </span>
+            <p>
+              {message.replyTo.deletedAt
+                ? "This message was deleted"
+                : message.replyTo.text}
+            </p>
+          </div>
+        )}
         {isDeleted ? (
           <p className={styles.deletedMessage}>This message was deleted </p>
         ) : (
           <p>{message.text}</p>
         )}
         <div className={styles.messageMeta}>
-          {isMine && !isDeleted && messageId && (
-            <button
-              type="button"
-              className={styles.deleteButton}
-              onClick={handleDelete}
-              aria-label="Delete message"
-              title="Delete message"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 6h2v9h-2V9Zm4 0h2v9h-2V9ZM6 9h2v9H6V9Zm-1 0h14l-1 11H6L5 9Z" />
-              </svg>
-            </button>
-          )}
-
           {formattedTime && (
             <span className={styles.messageTime}>{formattedTime}</span>
           )}
 
           {isMine && (
             <span className={`${styles.messageStatus} ${statusClass}`}>
-              {statusText}
+              <strong>{statusText}</strong>
             </span>
           )}
         </div>
@@ -101,9 +98,57 @@ const MessageItem = memo(({ message, isMine, onDelete }) => {
 
 MessageItem.displayName = "MessageItem";
 
-function MessageList({ messages = [], currentUserId, sendMessageDelete }) {
+function MessageList({
+  messages = [],
+  currentUserId,
+  sendMessageDelete,
+  onReply,
+}) {
   const messagesEndRef = useRef(null);
   const previousMessageCountRef = useRef(messages.length);
+  const [contextMenu, setContextMenu] = useState(null);
+
+  const contextMenuIsMine = contextMenu
+    ? getNormalizedId(contextMenu.message.senderId) ===
+      getNormalizedId(currentUserId)
+    : false;
+
+  const handleContextMenu = useCallback((event, message) => {
+    event.preventDefault();
+
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      message,
+    });
+  }, []);
+
+  const handleContextMenuDelete = useCallback(() => {
+    const messageId = getNormalizedId(contextMenu?.message);
+
+    if (!messageId) {
+      return;
+    }
+
+    sendMessageDelete(messageId);
+    setContextMenu(null);
+  }, [contextMenu, sendMessageDelete]);
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return;
+    }
+
+    const handleClick = () => {
+      setContextMenu(null);
+    };
+
+    document.addEventListener("click", handleClick);
+
+    return () => {
+      document.removeEventListener("click", handleClick);
+    };
+  }, [contextMenu]);
 
   useEffect(() => {
     const previousCount = previousMessageCountRef.current;
@@ -134,12 +179,42 @@ function MessageList({ messages = [], currentUserId, sendMessageDelete }) {
             key={stableKey}
             message={message}
             isMine={isMine}
-            onDelete={sendMessageDelete}
+            onContextMenu={handleContextMenu}
           />
         );
       })}
 
       <div ref={messagesEndRef} />
+      {contextMenu && (
+        <div
+          className={styles.contextMenu}
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+          }}
+        >
+          {contextMenuIsMine ? (
+            <button
+              type="button"
+              className={styles.contextMenuItem}
+              onClick={handleContextMenuDelete}
+            >
+              Delete
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={styles.contextMenuItem}
+              onClick={() => {
+                onReply(contextMenu.message);
+                setContextMenu(null);
+              }}
+            >
+              Reply
+            </button>
+          )}
+        </div>
+      )}
     </article>
   );
 }

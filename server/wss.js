@@ -404,7 +404,7 @@ function initializeWebSocket(server) {
         }
 
         if (data.type === "message.send") {
-          const { receiverId, text } = data.payload || {};
+          const { receiverId, text, replyTo } = data.payload || {};
 
           clientMessageId = data.payload?.clientMessageId;
 
@@ -454,11 +454,48 @@ function initializeWebSocket(server) {
             receiverId,
           );
 
+          let replyToMessage = null;
+
+          if (replyTo) {
+            if (!isValidObjectId(replyTo)) {
+              send(
+                socket,
+                "message.error",
+                {},
+                {
+                  message: "Invalid reply message",
+                },
+              );
+
+              return;
+            }
+
+            replyToMessage = await Message.findOne({
+              _id: replyTo,
+              conversationId: conversation._id,
+              deletedAt: null,
+            });
+
+            if (!replyToMessage) {
+              send(
+                socket,
+                "message.error",
+                {},
+                {
+                  message: "Reply message not found",
+                },
+              );
+
+              return;
+            }
+          }
+
           const message = await Message.create({
             conversationId: conversation._id,
             senderId,
             receiverId,
             text: text.trim(),
+            replyTo: replyTo || null,
           });
 
           conversation.updatedAt = new Date();

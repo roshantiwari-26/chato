@@ -102,6 +102,7 @@ function ChatWindow({ conversation, currentUser, onBack }) {
   const [loading, setLoading] = useState(false);
   const [otherUserOnline, setOtherUserOnline] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
 
   const currentUserId = getNormalizedId(currentUser);
   const conversationId = getNormalizedId(conversation);
@@ -331,6 +332,25 @@ function ChatWindow({ conversation, currentUser, onBack }) {
           deletedAt: payload.deletedAt,
         });
 
+        setMessages((previousMessages) =>
+          previousMessages.map((message) => {
+            if (
+              getNormalizedId(message.replyTo?._id) !==
+              getNormalizedId(payload.messageId)
+            ) {
+              return message;
+            }
+
+            return {
+              ...message,
+              replyTo: {
+                ...message.replyTo,
+                deletedAt: payload.deletedAt,
+              },
+            };
+          }),
+        );
+
         break;
       }
 
@@ -396,7 +416,7 @@ function ChatWindow({ conversation, currentUser, onBack }) {
   }, [conversationId, sendConversationRead]);
 
   const handleSend = useCallback(
-    (text) => {
+    (text, replyingTo) => {
       if (!conversationId || !currentUserId || !otherUserId || !connected) {
         return;
       }
@@ -418,7 +438,12 @@ function ChatWindow({ conversation, currentUser, onBack }) {
         mergeMessages(previousMessages, [optimisticMessage]),
       );
 
-      const sent = sendMessage(otherUserId, text, clientMessageId);
+      const sent = sendMessage(
+        otherUserId,
+        text,
+        clientMessageId,
+        replyingTo?._id || null,
+      );
 
       if (sent === false) {
         updateSingleMessage(clientMessageId, {
@@ -482,6 +507,7 @@ function ChatWindow({ conversation, currentUser, onBack }) {
           messages={messages}
           currentUserId={currentUserId}
           sendMessageDelete={sendMessageDelete}
+          onReply={setReplyingTo}
         />
       </div>
       <MessageInput
@@ -490,6 +516,8 @@ function ChatWindow({ conversation, currentUser, onBack }) {
         receiverId={otherUserId}
         sendTypingStart={sendTypingStart}
         sendTypingStop={sendTypingStop}
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
       />
     </section>
   );

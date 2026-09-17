@@ -160,13 +160,14 @@ function useWebSocket(activeConversationId) {
   }, []);
 
   const sendMessage = useCallback(
-    (receiverId, text, clientMessageId) => {
+    (receiverId, text, clientMessageId, replyTo) => {
       return send({
         type: "message.send",
         payload: {
           receiverId,
           text,
           clientMessageId,
+          replyTo,
         },
       });
     },

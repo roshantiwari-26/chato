@@ -72,6 +72,7 @@ async function getMessages(req, res, next) {
     }
 
     const messages = await Message.find(query)
+      .populate("replyTo", "_id text deletedAt")
       .sort({
         createdAt: -1,
         _id: -1,
@@ -96,6 +97,7 @@ async function getMessages(req, res, next) {
       deliveredAt: message.deliveredAt,
       readAt: message.readAt,
       deletedAt: message.deletedAt,
+      replyTo: message.replyTo,
     }));
 
     const nextCursor =

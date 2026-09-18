@@ -124,13 +124,6 @@ function MessageList({
       const isMine =
         getNormalizedId(message.senderId) === getNormalizedId(currentUserId);
 
-      console.log({
-        rectTop: rect.top,
-        rectBottom: rect.bottom,
-        rectHeight: rect.height,
-        clientY: event.clientY,
-      });
-
       setContextMenu({
         x: rect.left,
         y: rect.top,
@@ -181,8 +174,6 @@ function MessageList({
 
     previousMessageCountRef.current = messages.length;
   }, [messages.length]);
-
-  console.log("Context menu state:", contextMenu);
 
   return (
     <article className={styles.messagesArticle}>

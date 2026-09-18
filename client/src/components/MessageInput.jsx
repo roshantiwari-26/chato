@@ -98,7 +98,11 @@ function MessageInput({
   }, [stopTyping]);
 
   return (
-    <form className={styles.messageInput} onSubmit={handleSubmit}>
+    <form
+      className={styles.messageInput}
+      onSubmit={handleSubmit}
+      autoComplete="off"
+    >
       {replyingTo && (
         <div className={styles.replyPreview}>
           <div className={styles.replyPreviewContent}>
@@ -122,8 +126,12 @@ function MessageInput({
         value={text}
         onChange={handleChange}
         autoComplete="off"
-        autoCapitalize="sentences"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck="false"
+        data-form-type="other"
         id="message-input"
+        name="chatText"
         placeholder={connected ? "Type a message..." : "Connecting..."}
         disabled={!connected}
       />

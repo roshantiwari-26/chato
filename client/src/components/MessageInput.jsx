@@ -121,6 +121,9 @@ function MessageInput({
         type="text"
         value={text}
         onChange={handleChange}
+        autoComplete="off"
+        autoCapitalize="sentences"
+        id="message-input"
         placeholder={connected ? "Type a message..." : "Connecting..."}
         disabled={!connected}
       />

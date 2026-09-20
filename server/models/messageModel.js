@@ -20,10 +20,22 @@ const messageSchema = new mongoose.Schema(
       required: true,
     },
 
+    type: {
+      type: String,
+      enum: ["text", "image"],
+      default: "text",
+      required: true,
+    },
+
     text: {
       type: String,
-      required: true,
       trim: true,
+      default: null,
+    },
+
+    imageUrl: {
+      type: String,
+      default: null,
     },
 
     deliveredAt: {

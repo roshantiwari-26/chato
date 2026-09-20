@@ -14,13 +14,14 @@
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "^12.3.4",
+      "version": "^12.4.2",
       "onFail": "download"
     }
   },
   "type": "commonjs",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.11.0",
     "cookie": "^2.0.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -29,6 +30,7 @@
     "joi": "^18.2.5",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.3",
+    "multer": "^2.4.0",
     "ws": "^8.21.3"
   },
   "devDependencies": {

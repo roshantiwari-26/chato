@@ -11,6 +11,7 @@ function MessageInput({
   onCancelReply,
 }) {
   const [text, setText] = useState("");
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
@@ -57,21 +58,90 @@ function MessageInput({
   );
 
   const handleSubmit = useCallback(
-    (event) => {
+    async (event) => {
       event.preventDefault();
 
-      const trimmedText = text.trim();
-
-      if (!trimmedText || !connected) {
+      if (!connected) {
         return;
       }
 
       stopTyping();
+
+      if (selectedImage) {
+        try {
+          const imageUrl = await uploadImage(selectedImage.file);
+
+          onSend(null, replyingTo, {
+            type: "image",
+            imageUrl,
+          });
+
+          URL.revokeObjectURL(selectedImage.previewUrl);
+          setSelectedImage(null);
+        } catch (error) {
+          console.error(error);
+        }
+
+        return;
+      }
+
+      const trimmedText = text.trim();
+
+      if (!trimmedText) {
+        return;
+      }
+
       onSend(trimmedText, replyingTo);
       setText("");
     },
-    [text, connected, stopTyping, onSend],
+    [connected, selectedImage, text, replyingTo, stopTyping, onSend],
   );
+
+  const handleImageSelect = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return;
+    }
+
+    setSelectedImage({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    });
+  };
+
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+
+    formData.append("image", file);
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/uploads/image`,
+      {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Image upload failed");
+    }
+
+    const data = await response.json();
+
+    return data.imageUrl;
+  };
 
   useEffect(() => {
     if (previousReceiverIdRef.current !== receiverId) {
@@ -120,6 +190,23 @@ function MessageInput({
           </button>
         </div>
       )}
+      {selectedImage && (
+        <div className={styles.imagePreview}>
+          <img
+            className={styles.imagePreviewImage}
+            src={selectedImage.previewUrl}
+            alt="Preview"
+          />
+          <button
+            type="button"
+            className={styles.imagePreviewClose}
+            onClick={() => setSelectedImage(null)}
+            aria-label="Remove image"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <input
         className={styles.input}
         type="text"
@@ -135,11 +222,27 @@ function MessageInput({
         placeholder={connected ? "Type a message..." : "Connecting..."}
         disabled={!connected}
       />
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleImageSelect}
+        hidden
+        id="imageInput"
+      />
+
+      <button
+        type="button"
+        className={styles.imageButton}
+        onClick={() => document.getElementById("imageInput").click()}
+        disabled={!connected}
+      >
+        📷
+      </button>
 
       <button
         className={styles.sendButton}
         type="submit"
-        disabled={!connected || !text.trim()}
+        disabled={!connected || (!text.trim() && !selectedImage)}
       >
         Send
       </button>

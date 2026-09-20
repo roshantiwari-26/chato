@@ -404,17 +404,47 @@ function initializeWebSocket(server) {
         }
 
         if (data.type === "message.send") {
-          const { receiverId, text, replyTo } = data.payload || {};
+          const { receiverId, text, replyTo, type, imageUrl } =
+            data.payload || {};
 
           clientMessageId = data.payload?.clientMessageId;
 
-          if (!receiverId || typeof text !== "string" || !text.trim()) {
+          if (!receiverId || !["text", "image"].includes(type)) {
             send(
               socket,
               "message.error",
               {},
               {
-                message: "Recipient and text are required",
+                message: "Recipient and valid message type are required",
+              },
+            );
+
+            return;
+          }
+
+          if (type === "text" && (typeof text !== "string" || !text.trim())) {
+            send(
+              socket,
+              "message.error",
+              {},
+              {
+                message: "Text is required",
+              },
+            );
+
+            return;
+          }
+
+          if (
+            type === "image" &&
+            (typeof imageUrl !== "string" || !imageUrl.trim())
+          ) {
+            send(
+              socket,
+              "message.error",
+              {},
+              {
+                message: "Image URL is required",
               },
             );
 
@@ -489,12 +519,13 @@ function initializeWebSocket(server) {
               return;
             }
           }
-
           const message = await Message.create({
             conversationId: conversation._id,
             senderId,
             receiverId,
-            text: text.trim(),
+            type,
+            text: type === "text" ? text.trim() : null,
+            imageUrl: type === "image" ? imageUrl.trim() : null,
             replyTo: replyTo || null,
           });
 
@@ -505,6 +536,8 @@ function initializeWebSocket(server) {
             clientMessageId,
             messageId: message._id,
             conversationId: conversation._id,
+            type: message.type,
+            imageUrl: message.imageUrl,
             createdAt: message.createdAt,
           });
 
@@ -513,13 +546,14 @@ function initializeWebSocket(server) {
           if (!targetSocket) {
             return;
           }
-
           send(targetSocket, "message.new", {
             id: message._id,
             conversationId: conversation._id,
             senderId,
             receiverId,
+            type: message.type,
             text: message.text,
+            imageUrl: message.imageUrl,
             createdAt: message.createdAt,
           });
 

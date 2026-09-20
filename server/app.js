@@ -6,6 +6,7 @@ const cors = require("cors");
 const authRoutes = require("./routes/authRoutes");
 const conversationRoutes = require("./routes/conversationRoutes");
 const userRoutes = require("./routes/userRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
 const errorMiddleware = require("./middlewares/errorMiddleware");
 
 const app = express();
@@ -21,6 +22,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/uploads", uploadRoutes);
 
 app.use(errorMiddleware);
 module.exports = app;

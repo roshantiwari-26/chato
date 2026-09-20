@@ -416,7 +416,7 @@ function ChatWindow({ conversation, currentUser, onBack }) {
   }, [conversationId, sendConversationRead]);
 
   const handleSend = useCallback(
-    (text, replyingTo) => {
+    (text, replyingTo, attachment) => {
       if (!conversationId || !currentUserId || !otherUserId || !connected) {
         return;
       }
@@ -430,6 +430,9 @@ function ChatWindow({ conversation, currentUser, onBack }) {
         senderId: currentUserId,
         receiverId: otherUserId,
         text,
+        type: attachment?.type || "text",
+        imageUrl: attachment?.imageUrl || null,
+        replyTo: replyingTo || null,
         createdAt: new Date().toISOString(),
         status: "sending",
       };
@@ -443,6 +446,8 @@ function ChatWindow({ conversation, currentUser, onBack }) {
         text,
         clientMessageId,
         replyingTo?._id || null,
+        attachment?.type || "text",
+        attachment?.imageUrl || null,
       );
 
       if (sent === false) {

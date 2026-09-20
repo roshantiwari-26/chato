@@ -77,7 +77,13 @@ const MessageItem = memo(
             </div>
           )}
           {isDeleted ? (
-            <p className={styles.deletedMessage}>This message was deleted </p>
+            <p className={styles.deletedMessage}>This message was deleted</p>
+          ) : message.type === "image" ? (
+            <img
+              className={styles.messageImage}
+              src={message.imageUrl}
+              alt="Shared image"
+            />
           ) : (
             <p>{message.text}</p>
           )}

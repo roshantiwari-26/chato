@@ -177,7 +177,15 @@ function MessageInput({
         <div className={styles.replyPreview}>
           <div className={styles.replyPreviewContent}>
             <span className={styles.replyPreviewLabel}>Replying to</span>
-            <p>{replyingTo.text}</p>
+            {replyingTo.type === "image" ? (
+              <img
+                className={styles.replyPreviewImage}
+                src={replyingTo.imageUrl}
+                alt="Reply preview"
+              />
+            ) : (
+              <p>{replyingTo.text}</p>
+            )}
           </div>
 
           <button

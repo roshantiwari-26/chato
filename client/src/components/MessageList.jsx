@@ -69,11 +69,18 @@ const MessageItem = memo(
               <span className={styles.replyMessageLabel}>
                 {isMine ? "Reply" : "You"}
               </span>
-              <p>
-                {message.replyTo.deletedAt
-                  ? "This message was deleted"
-                  : message.replyTo.text}
-              </p>
+
+              {message.replyTo.deletedAt ? (
+                <p>This message was deleted</p>
+              ) : message.replyTo.type === "image" ? (
+                <img
+                  className={styles.replyMessageImage}
+                  src={message.replyTo.imageUrl}
+                  alt="Replied image"
+                />
+              ) : (
+                <p>{message.replyTo.text}</p>
+              )}
             </div>
           )}
           {isDeleted ? (

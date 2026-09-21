@@ -267,6 +267,14 @@
   object-fit: contain;
 }
 
+.replyMessageImage {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
 @media (max-width: 768px) {
   .backButton {
     display: grid;

@@ -148,6 +148,13 @@
   cursor: pointer;
 }
 
+.replyPreviewImage {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
 @media (max-width: 768px) {
   .messageInput {
     padding: 12px 14px;

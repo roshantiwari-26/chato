@@ -72,7 +72,7 @@ async function getMessages(req, res, next) {
     }
 
     const messages = await Message.find(query)
-      .populate("replyTo", "_id text deletedAt")
+      .populate("replyTo", "_id text type imageUrl deletedAt")
       .sort({
         createdAt: -1,
         _id: -1,

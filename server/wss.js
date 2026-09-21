@@ -539,6 +539,15 @@ function initializeWebSocket(server) {
             type: message.type,
             imageUrl: message.imageUrl,
             createdAt: message.createdAt,
+            replyTo: replyToMessage
+              ? {
+                  _id: replyToMessage._id,
+                  type: replyToMessage.type,
+                  text: replyToMessage.text,
+                  imageUrl: replyToMessage.imageUrl,
+                  deletedAt: replyToMessage.deletedAt,
+                }
+              : null,
           });
 
           const targetSocket = onlineUsers.get(receiverId.toString());
@@ -555,6 +564,15 @@ function initializeWebSocket(server) {
             text: message.text,
             imageUrl: message.imageUrl,
             createdAt: message.createdAt,
+            replyTo: replyToMessage
+              ? {
+                  _id: replyToMessage._id,
+                  type: replyToMessage.type,
+                  text: replyToMessage.text,
+                  imageUrl: replyToMessage.imageUrl,
+                  deletedAt: replyToMessage.deletedAt,
+                }
+              : null,
           });
 
           return;

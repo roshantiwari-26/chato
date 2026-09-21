@@ -12,6 +12,14 @@ const uploadImage = async (req, res) => {
       {
         folder: "chato/images",
         resource_type: "image",
+        transformation: [
+          {
+            width: 1600,
+            height: 1600,
+            crop: "limit",
+            quality: "auto:good",
+          },
+        ],
       },
       (error, result) => {
         if (error) {

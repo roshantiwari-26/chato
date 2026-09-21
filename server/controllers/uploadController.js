@@ -35,6 +35,7 @@ const uploadImage = async (req, res) => {
 
   res.json({
     imageUrl: result.secure_url,
+    assetId: result.asset_id,
   });
 };
 

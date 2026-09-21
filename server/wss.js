@@ -2,6 +2,7 @@ const WebSocket = require("ws");
 const mongoose = require("mongoose");
 const cookie = require("cookie");
 const jwt = require("jsonwebtoken");
+const cloudinary = require("./config/cloudinary");
 
 const Message = require("./models/messageModel");
 const { findOrCreateConversation } = require("./services/conversationService");
@@ -386,6 +387,15 @@ function initializeWebSocket(server) {
             return;
           }
 
+          if (message.type === "image" && message.assetId) {
+            await cloudinary.api.delete_resources_by_asset_ids(
+              [message.assetId],
+              {
+                invalidate: true,
+              },
+            );
+          }
+
           message.deletedAt = new Date();
           await message.save();
 
@@ -404,7 +414,7 @@ function initializeWebSocket(server) {
         }
 
         if (data.type === "message.send") {
-          const { receiverId, text, replyTo, type, imageUrl } =
+          const { receiverId, text, replyTo, type, imageUrl, assetId } =
             data.payload || {};
 
           clientMessageId = data.payload?.clientMessageId;
@@ -437,14 +447,17 @@ function initializeWebSocket(server) {
 
           if (
             type === "image" &&
-            (typeof imageUrl !== "string" || !imageUrl.trim())
+            (typeof imageUrl !== "string" ||
+              !imageUrl.trim() ||
+              typeof assetId !== "string" ||
+              !assetId.trim())
           ) {
             send(
               socket,
               "message.error",
               {},
               {
-                message: "Image URL is required",
+                message: "Image URL and asset ID is required",
               },
             );
 
@@ -526,6 +539,7 @@ function initializeWebSocket(server) {
             type,
             text: type === "text" ? text.trim() : null,
             imageUrl: type === "image" ? imageUrl.trim() : null,
+            assetId: type === "image" ? assetId.trim() : null,
             replyTo: replyTo || null,
           });
 

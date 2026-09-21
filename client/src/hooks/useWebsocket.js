@@ -160,7 +160,7 @@ function useWebSocket(activeConversationId) {
   }, []);
 
   const sendMessage = useCallback(
-    (receiverId, text, clientMessageId, replyTo, type, imageUrl) => {
+    (receiverId, text, clientMessageId, replyTo, type, imageUrl, assetId) => {
       return send({
         type: "message.send",
         payload: {
@@ -170,6 +170,7 @@ function useWebSocket(activeConversationId) {
           replyTo,
           type,
           imageUrl,
+          assetId,
         },
       });
     },

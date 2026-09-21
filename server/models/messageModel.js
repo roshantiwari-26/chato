@@ -38,6 +38,11 @@ const messageSchema = new mongoose.Schema(
       default: null,
     },
 
+    assetId: {
+      type: String,
+      default: null,
+    },
+
     deliveredAt: {
       type: Date,
       default: null,

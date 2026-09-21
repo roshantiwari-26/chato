@@ -448,6 +448,7 @@ function ChatWindow({ conversation, currentUser, onBack }) {
         replyingTo?._id || null,
         attachment?.type || "text",
         attachment?.imageUrl || null,
+        attachment?.assetId || null,
       );
 
       if (sent === false) {

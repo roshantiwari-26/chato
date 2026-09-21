@@ -19,7 +19,7 @@ const getNormalizedId = (value) => {
 };
 
 const MessageItem = memo(
-  ({ message, isMine, onContextMenu, isContextMenuOpen }) => {
+  ({ message, isMine, onContextMenu, isContextMenuOpen, onImageClick }) => {
     const isDeleted = Boolean(message.deletedAt);
     const messageId = getNormalizedId(message);
 
@@ -90,6 +90,7 @@ const MessageItem = memo(
               className={styles.messageImage}
               src={message.imageUrl}
               alt="Shared image"
+              onClick={() => onImageClick(message.imageUrl)}
             />
           ) : (
             <p>{message.text}</p>
@@ -113,6 +114,8 @@ const MessageItem = memo(
 
 MessageItem.displayName = "MessageItem";
 
+// Message List
+
 function MessageList({
   messages = [],
   currentUserId,
@@ -122,6 +125,7 @@ function MessageList({
   const messagesEndRef = useRef(null);
   const previousMessageCountRef = useRef(messages.length);
   const [contextMenu, setContextMenu] = useState(null);
+  const [viewingImage, setViewingImage] = useState(null);
 
   const contextMenuIsMine = contextMenu
     ? getNormalizedId(contextMenu.message.senderId) ===
@@ -160,6 +164,10 @@ function MessageList({
     setContextMenu(null);
   }, [contextMenu, sendMessageDelete]);
 
+  const handleImageClick = useCallback((imageUrl) => {
+    setViewingImage(imageUrl);
+  }, []);
+
   useEffect(() => {
     if (!contextMenu) {
       return;
@@ -188,6 +196,24 @@ function MessageList({
     previousMessageCountRef.current = messages.length;
   }, [messages.length]);
 
+  useEffect(() => {
+    if (!viewingImage) {
+      return;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setViewingImage(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [viewingImage]);
+
   return (
     <article className={styles.messagesArticle}>
       {messages.map((message) => {
@@ -206,6 +232,7 @@ function MessageList({
             message={message}
             isMine={isMine}
             onContextMenu={handleContextMenu}
+            onImageClick={handleImageClick}
             isContextMenuOpen={
               contextMenu &&
               getNormalizedId(contextMenu.message) === getNormalizedId(message)
@@ -245,6 +272,29 @@ function MessageList({
               Reply
             </button>
           )}
+        </div>
+      )}
+
+      {viewingImage && (
+        <div
+          className={styles.imageViewer}
+          onClick={() => setViewingImage(null)}
+        >
+          <button
+            type="button"
+            className={styles.imageViewerClose}
+            onClick={() => setViewingImage(null)}
+            aria-label="Close image"
+          >
+            ×
+          </button>
+
+          <img
+            className={styles.imageViewerImage}
+            src={viewingImage}
+            alt="Full size"
+            onClick={(event) => event.stopPropagation()}
+          />
         </div>
       )}
     </article>

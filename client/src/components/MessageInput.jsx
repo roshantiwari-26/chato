@@ -69,11 +69,12 @@ function MessageInput({
 
       if (selectedImage) {
         try {
-          const imageUrl = await uploadImage(selectedImage.file);
+          const image = await uploadImage(selectedImage.file);
 
           onSend(null, replyingTo, {
             type: "image",
-            imageUrl,
+            imageUrl: image.imageUrl,
+            assetId: image.assetId,
           });
 
           URL.revokeObjectURL(selectedImage.previewUrl);
@@ -140,7 +141,7 @@ function MessageInput({
 
     const data = await response.json();
 
-    return data.imageUrl;
+    return data;
   };
 
   useEffect(() => {

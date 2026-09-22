@@ -591,6 +591,70 @@ function initializeWebSocket(server) {
 
           return;
         }
+
+        if (data.type === "call.initiate") {
+          const { receiverId } = data.payload || {};
+
+          if (!isValidObjectId(receiverId)) {
+            return;
+          }
+
+          if (receiverId.toString() === connectedUserId.toString()) {
+            return;
+          }
+
+          const receiverSocket = onlineUsers.get(receiverId.toString());
+
+          if (!receiverSocket) {
+            return;
+          }
+
+          send(receiverSocket, "call.incoming", {
+            callerId: connectedUserId,
+          });
+
+          return;
+        }
+
+        if (data.type === "call.reject") {
+          const { callerId } = data.payload || {};
+
+          if (!isValidObjectId(callerId)) {
+            return;
+          }
+
+          const callerSocket = onlineUsers.get(callerId.toString());
+
+          if (!callerSocket) {
+            return;
+          }
+
+          send(callerSocket, "call.rejected", {
+            receiverId: connectedUserId,
+          });
+
+          return;
+        }
+
+        if (data.type === "call.accept") {
+          const { callerId } = data.payload || {};
+
+          if (!isValidObjectId(callerId)) {
+            return;
+          }
+
+          const callerSocket = onlineUsers.get(callerId.toString());
+
+          if (!callerSocket) {
+            return;
+          }
+
+          send(callerSocket, "call.accepted", {
+            receiverId: connectedUserId,
+          });
+
+          return;
+        }
       } catch (error) {
         console.error("Message handling failed:", error);
 

@@ -15,6 +15,9 @@ export function WebSocketProvider({ children, activeConversationId }) {
     unreadCounts,
     markConversationUnreadAsRead,
     sendMessage,
+    sendCallInitiate,
+    sendCallReject,
+    sendCallAccept,
     subscribeToPresence,
     unsubscribePresence,
     sendTypingStart,
@@ -27,6 +30,9 @@ export function WebSocketProvider({ children, activeConversationId }) {
   const actions = useMemo(
     () => ({
       sendMessage,
+      sendCallInitiate,
+      sendCallReject,
+      sendCallAccept,
       subscribeToPresence,
       unsubscribePresence,
       sendTypingStart,
@@ -38,6 +44,9 @@ export function WebSocketProvider({ children, activeConversationId }) {
     }),
     [
       sendMessage,
+      sendCallInitiate,
+      sendCallReject,
+      sendCallAccept,
       subscribeToPresence,
       unsubscribePresence,
       sendTypingStart,

@@ -85,6 +85,9 @@ const mergeMessages = (existingMessages, incomingMessages) => {
 function ChatWindow({ conversation, currentUser, onBack }) {
   const {
     sendMessage,
+    sendCallInitiate,
+    sendCallReject,
+    sendCallAccept,
     subscribeToPresence,
     unsubscribePresence,
     sendTypingStart,
@@ -103,6 +106,7 @@ function ChatWindow({ conversation, currentUser, onBack }) {
   const [otherUserOnline, setOtherUserOnline] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(null);
 
   const currentUserId = getNormalizedId(currentUser);
   const conversationId = getNormalizedId(conversation);
@@ -354,6 +358,21 @@ function ChatWindow({ conversation, currentUser, onBack }) {
         break;
       }
 
+      case "call.incoming": {
+        console.log("Incoming call:", lastMessage.payload);
+
+        setIncomingCall(lastMessage.payload);
+        break;
+      }
+
+      case "call.rejected": {
+        console.log("Call rejected:", lastMessage.payload);
+      }
+
+      case "call.accepted":
+        console.log("Call accepted:", lastMessage.payload);
+        break;
+
       default:
         break;
     }
@@ -467,6 +486,14 @@ function ChatWindow({ conversation, currentUser, onBack }) {
     ],
   );
 
+  const handleCall = useCallback(() => {
+    if (!connected || !otherUserId) {
+      return;
+    }
+
+    sendCallInitiate(otherUserId);
+  }, [connected, otherUserId, sendCallInitiate]);
+
   if (!conversation) {
     return (
       <section className={styles.emptyWindow}>
@@ -510,7 +537,38 @@ function ChatWindow({ conversation, currentUser, onBack }) {
                 : "Offline"}
           </span>
         </div>
+        <button type="button" onClick={handleCall}>
+          📞
+        </button>
       </header>
+      {incomingCall && (
+        <div className={styles.incomingCall}>
+          <p>Incoming Call</p>
+
+          <div className={styles.incomingCallActions}>
+            <button
+              type="button"
+              onClick={() => {
+                sendCallReject(incomingCall.callerId);
+                setIncomingCall(null);
+              }}
+            >
+              Reject
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                sendCallAccept(incomingCall.callerId);
+                setIncomingCall(null);
+              }}
+            >
+              Accept
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className={styles.messagesContainer}>
         {loading && <p className={styles.loading}>Loading messages...</p>}
 

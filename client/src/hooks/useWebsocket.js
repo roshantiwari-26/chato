@@ -178,6 +178,42 @@ function useWebSocket(activeConversationId) {
     [send],
   );
 
+  const sendCallInitiate = useCallback(
+    (receiverId) => {
+      return send({
+        type: "call.initiate",
+        payload: {
+          receiverId,
+        },
+      });
+    },
+    [send],
+  );
+
+  const sendCallReject = useCallback(
+    (callerId) => {
+      return send({
+        type: "call.reject",
+        payload: {
+          callerId,
+        },
+      });
+    },
+    [send],
+  );
+
+  const sendCallAccept = useCallback(
+    (callerId) => {
+      return send({
+        type: "call.accept",
+        payload: {
+          callerId,
+        },
+      });
+    },
+    [send],
+  );
+
   const subscribeToPresence = useCallback(
     (userId) => {
       return send({
@@ -272,6 +308,9 @@ function useWebSocket(activeConversationId) {
   return {
     connected,
     sendMessage,
+    sendCallInitiate,
+    sendCallReject,
+    sendCallAccept,
     lastMessage,
     unreadCounts,
     markConversationUnreadAsRead,

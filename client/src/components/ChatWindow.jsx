@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import MessageInput from "./MessageInput";
 import MessageList from "./MessageList";
 import { getMessages } from "../api/conversations";
@@ -88,6 +88,9 @@ function ChatWindow({ conversation, currentUser, onBack }) {
     sendCallInitiate,
     sendCallReject,
     sendCallAccept,
+    sendWebRTCOffer,
+    sendWebRTCAnswer,
+    sendWebRTCIceCandidate,
     subscribeToPresence,
     unsubscribePresence,
     sendTypingStart,
@@ -107,6 +110,8 @@ function ChatWindow({ conversation, currentUser, onBack }) {
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
+
+  const peerConnectionRef = useRef(null);
 
   const currentUserId = getNormalizedId(currentUser);
   const conversationId = getNormalizedId(conversation);
@@ -138,6 +143,130 @@ function ChatWindow({ conversation, currentUser, onBack }) {
           : message;
       }),
     );
+  }, []);
+
+  const createCallOffer = useCallback(async () => {
+    const peerConnection = peerConnectionRef.current;
+
+    if (!peerConnection) {
+      return;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+    });
+
+    for (const track of stream.getTracks()) {
+      console.log("Adding local track:", {
+        kind: track.kind,
+        enabled: track.enabled,
+        muted: track.muted,
+        readyState: track.readyState,
+      });
+
+      peerConnection.addTrack(track, stream);
+    }
+
+    const offer = await peerConnection.createOffer();
+
+    await peerConnection.setLocalDescription(offer);
+
+    console.log(
+      "ICE gathering state after local description:",
+      peerConnection.iceGatheringState,
+    );
+
+    sendWebRTCOffer(otherUserId, offer);
+  }, [otherUserId, sendWebRTCOffer]);
+
+  const handleWebRTCOffer = useCallback(
+    async (callerId, offer) => {
+      const peerConnection = new RTCPeerConnection({
+        iceServers: [
+          {
+            urls: "stun:stun.l.google.com:19302",
+          },
+        ],
+      });
+
+      peerConnectionRef.current = peerConnection;
+
+      peerConnection.ontrack = (event) => {
+        console.log("Remote track received:", event.track);
+
+        event.track.onmute = () => {
+          console.log("Remote track muted");
+        };
+
+        event.track.onunmute = () => {
+          console.log("Remote track unmuted");
+        };
+
+        const audio = new Audio();
+
+        audio.srcObject = event.streams[0];
+
+        audio
+          .play()
+          .then(() => {
+            console.log("Remote audio playback started");
+          })
+          .catch((error) => {
+            console.error("Failed to play remote audio:", error);
+          });
+      };
+
+      peerConnection.onicecandidate = (event) => {
+        if (!event.candidate) {
+          return;
+        }
+
+        sendWebRTCIceCandidate(callerId, event.candidate);
+      };
+
+      peerConnection.oniceconnectionstatechange = () => {
+        console.log("ICE connection state:", peerConnection.iceConnectionState);
+      };
+
+      await peerConnection.setRemoteDescription(offer);
+
+      const answer = await peerConnection.createAnswer();
+
+      await peerConnection.setLocalDescription(answer);
+
+      console.log("Created answer:", answer);
+
+      sendWebRTCAnswer(callerId, answer);
+
+      peerConnection.onconnectionstatechange = () => {
+        console.log("Connection state:", peerConnection.connectionState);
+      };
+    },
+    [sendWebRTCIceCandidate, sendWebRTCAnswer],
+  );
+
+  const handleWebRTCAnswer = useCallback(async (answer) => {
+    const peerConnection = peerConnectionRef.current;
+
+    if (!peerConnection) {
+      return;
+    }
+
+    await peerConnection.setRemoteDescription(answer);
+
+    console.log("Remote answer set:", answer);
+  }, []);
+
+  const handleWebRTCIceCandidate = useCallback(async (candidate) => {
+    const peerConnection = peerConnectionRef.current;
+
+    if (!peerConnection) {
+      return;
+    }
+
+    await peerConnection.addIceCandidate(candidate);
+
+    console.log("ICE candidate added:", candidate);
   }, []);
 
   useEffect(() => {
@@ -209,6 +338,8 @@ function ChatWindow({ conversation, currentUser, onBack }) {
     }
 
     const { type, payload } = lastMessage;
+
+    console.log("WS event received:", lastMessage);
 
     if (!payload) {
       return;
@@ -367,11 +498,73 @@ function ChatWindow({ conversation, currentUser, onBack }) {
 
       case "call.rejected": {
         console.log("Call rejected:", lastMessage.payload);
+        break;
       }
 
-      case "call.accepted":
-        console.log("Call accepted:", lastMessage.payload);
+      case "call.accepted": {
+        const peerConnection = new RTCPeerConnection({
+          iceServers: [
+            {
+              urls: "stun:stun.l.google.com:19302",
+            },
+          ],
+        });
+
+        peerConnectionRef.current = peerConnection;
+
+        peerConnection.onicecandidate = (event) => {
+          if (!event.candidate) {
+            return;
+          }
+
+          sendWebRTCIceCandidate(otherUserId, event.candidate);
+        };
+
+        peerConnection.onicegatheringstatechange = () => {
+          console.log("ICE gathering state:", peerConnection.iceGatheringState);
+        };
+
+        peerConnection.oniceconnectionstatechange = () => {
+          console.log(
+            "ICE connection state:",
+            peerConnection.iceConnectionState,
+          );
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+          console.log("Connection state:", peerConnection.connectionState);
+        };
+
+        createCallOffer();
+
+        console.log("Peer connection created:", peerConnection);
+
         break;
+      }
+
+      case "webrtc.offer": {
+        const { callerId, offer } = lastMessage.payload;
+
+        handleWebRTCOffer(callerId, offer);
+
+        break;
+      }
+
+      case "webrtc.answer": {
+        const { answer } = lastMessage.payload;
+
+        handleWebRTCAnswer(answer);
+
+        break;
+      }
+
+      case "webrtc.ice-candidate": {
+        const { candidate } = payload;
+
+        handleWebRTCIceCandidate(candidate);
+
+        break;
+      }
 
       default:
         break;
@@ -382,6 +575,10 @@ function ChatWindow({ conversation, currentUser, onBack }) {
     currentUserId,
     sendMessageRead,
     updateSingleMessage,
+    createCallOffer,
+    handleWebRTCOffer,
+    handleWebRTCAnswer,
+    handleWebRTCIceCandidate,
   ]);
 
   useEffect(() => {

@@ -655,6 +655,70 @@ function initializeWebSocket(server) {
 
           return;
         }
+
+        if (data.type === "webrtc.offer") {
+          console.log("WebRTC offer received by server:", data.payload);
+          const { receiverId, offer } = data.payload || {};
+
+          if (!isValidObjectId(receiverId) || !offer) {
+            return;
+          }
+
+          const receiverSocket = onlineUsers.get(receiverId.toString());
+
+          if (!receiverSocket) {
+            return;
+          }
+
+          send(receiverSocket, "webrtc.offer", {
+            callerId: connectedUserId,
+            offer,
+          });
+
+          return;
+        }
+
+        if (data.type === "webrtc.answer") {
+          const { receiverId, answer } = data.payload || {};
+
+          if (!isValidObjectId(receiverId) || !answer) {
+            return;
+          }
+
+          const receiverSocket = onlineUsers.get(receiverId.toString());
+
+          if (!receiverSocket) {
+            return;
+          }
+
+          send(receiverSocket, "webrtc.answer", {
+            receiverId: connectedUserId,
+            answer,
+          });
+
+          return;
+        }
+
+        if (data.type === "webrtc.ice-candidate") {
+          const { receiverId, candidate } = data.payload || {};
+
+          if (!isValidObjectId(receiverId) || !candidate) {
+            return;
+          }
+
+          const receiverSocket = onlineUsers.get(receiverId.toString());
+
+          if (!receiverSocket) {
+            return;
+          }
+
+          send(receiverSocket, "webrtc.ice-candidate", {
+            senderId: connectedUserId,
+            candidate,
+          });
+
+          return;
+        }
       } catch (error) {
         console.error("Message handling failed:", error);
 

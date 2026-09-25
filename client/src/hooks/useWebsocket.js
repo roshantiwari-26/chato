@@ -214,6 +214,50 @@ function useWebSocket(activeConversationId) {
     [send],
   );
 
+  const sendWebRTCOffer = useCallback(
+    (receiverId, offer) => {
+      console.log("Sending WebRTC offer:", {
+        receiverId,
+        offer,
+      });
+
+      return send({
+        type: "webrtc.offer",
+        payload: {
+          receiverId,
+          offer,
+        },
+      });
+    },
+    [send],
+  );
+
+  const sendWebRTCAnswer = useCallback(
+    (receiverId, answer) => {
+      return send({
+        type: "webrtc.answer",
+        payload: {
+          receiverId,
+          answer,
+        },
+      });
+    },
+    [send],
+  );
+
+  const sendWebRTCIceCandidate = useCallback(
+    (receiverId, candidate) => {
+      return send({
+        type: "webrtc.ice-candidate",
+        payload: {
+          receiverId,
+          candidate,
+        },
+      });
+    },
+    [send],
+  );
+
   const subscribeToPresence = useCallback(
     (userId) => {
       return send({
@@ -311,6 +355,9 @@ function useWebSocket(activeConversationId) {
     sendCallInitiate,
     sendCallReject,
     sendCallAccept,
+    sendWebRTCOffer,
+    sendWebRTCAnswer,
+    sendWebRTCIceCandidate,
     lastMessage,
     unreadCounts,
     markConversationUnreadAsRead,

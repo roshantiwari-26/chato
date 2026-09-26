@@ -475,6 +475,16 @@ function ChatWindow({ conversation, currentUser, onBack }) {
 
         peerConnectionRef.current = peerConnection;
 
+        peerConnection.ontrack = (event) => {
+          const audio = new Audio();
+
+          audio.srcObject = event.streams[0];
+
+          audio.play().catch((error) => {
+            console.error("Failed to play remote audio:", error);
+          });
+        };
+
         peerConnection.onicecandidate = (event) => {
           if (!event.candidate) {
             return;

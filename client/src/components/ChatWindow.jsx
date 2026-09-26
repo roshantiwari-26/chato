@@ -189,8 +189,6 @@ function ChatWindow({ conversation, currentUser, onBack }) {
   const handleWebRTCOffer = useCallback(
     async (callerId, offer) => {
       try {
-        pendingIceCandidatesRef.current = [];
-
         const peerConnection = new RTCPeerConnection({
           iceServers: [
             {
@@ -342,6 +340,16 @@ function ChatWindow({ conversation, currentUser, onBack }) {
       await peerConnection.setRemoteDescription(answer);
 
       console.log("REMOTE ANSWER SET:", peerConnection.remoteDescription);
+
+      for (const candidate of pendingIceCandidatesRef.current) {
+        console.log("ADDING QUEUED ICE CANDIDATE");
+
+        await peerConnection.addIceCandidate(candidate);
+
+        console.log("QUEUED ICE CANDIDATE ADDED");
+      }
+
+      pendingIceCandidatesRef.current = [];
     } catch (error) {
       console.error("FAILED TO SET REMOTE ANSWER:", error);
     }

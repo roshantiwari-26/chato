@@ -112,6 +112,7 @@ function ChatWindow({ conversation, currentUser, onBack }) {
   const [incomingCall, setIncomingCall] = useState(null);
 
   const peerConnectionRef = useRef(null);
+  const pendingIceCandidatesRef = useRef([]);
 
   const currentUserId = getNormalizedId(currentUser);
   const conversationId = getNormalizedId(conversation);
@@ -199,6 +200,12 @@ function ChatWindow({ conversation, currentUser, onBack }) {
 
       await peerConnection.setRemoteDescription(offer);
 
+      for (const candidate of pendingIceCandidatesRef.current) {
+        await peerConnection.addIceCandidate(candidate);
+      }
+
+      pendingIceCandidatesRef.current = [];
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });
@@ -230,6 +237,11 @@ function ChatWindow({ conversation, currentUser, onBack }) {
     const peerConnection = peerConnectionRef.current;
 
     if (!peerConnection) {
+      return;
+    }
+
+    if (!peerConnection.remoteDescription) {
+      pendingIceCandidatesRef.current.push(candidate);
       return;
     }
 

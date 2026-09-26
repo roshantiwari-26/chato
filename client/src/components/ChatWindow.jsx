@@ -153,17 +153,35 @@ function ChatWindow({ conversation, currentUser, onBack }) {
       return;
     }
 
+    console.log("REQUESTING MICROPHONE");
+
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: true,
     });
 
+    console.log("MICROPHONE STREAM:", {
+      id: stream.id,
+      active: stream.active,
+      tracks: stream.getTracks().map((track) => ({
+        kind: track.kind,
+        enabled: track.enabled,
+        muted: track.muted,
+        readyState: track.readyState,
+      })),
+    });
+
     for (const track of stream.getTracks()) {
+      console.log("ADDING LOCAL TRACK:", track);
       peerConnection.addTrack(track, stream);
     }
 
     const offer = await peerConnection.createOffer();
 
+    console.log("OFFER CREATED:", offer);
+
     await peerConnection.setLocalDescription(offer);
+
+    console.log("LOCAL DESCRIPTION SET:", peerConnection.localDescription);
 
     sendWebRTCOffer(otherUserId, offer);
   }, [otherUserId, sendWebRTCOffer]);
@@ -179,15 +197,85 @@ function ChatWindow({ conversation, currentUser, onBack }) {
       });
 
       peerConnectionRef.current = peerConnection;
+      console.log("WEBRTC OFFER RECEIVED: peer connection created");
+
+      peerConnection.onicecandidate = (event) => {
+        if (!event.candidate) {
+          console.log("ICE CANDIDATE GATHERING COMPLETE");
+          return;
+        }
+
+        console.log("LOCAL ICE CANDIDATE:", event.candidate);
+
+        sendWebRTCIceCandidate(callerId, event.candidate);
+      };
+
+      peerConnection.onicegatheringstatechange = () => {
+        console.log("ICE GATHERING STATE:", peerConnection.iceGatheringState);
+      };
+
+      peerConnection.oniceconnectionstatechange = () => {
+        console.log("ICE CONNECTION STATE:", peerConnection.iceConnectionState);
+      };
+
+      peerConnection.onconnectionstatechange = () => {
+        console.log("PEER CONNECTION STATE:", peerConnection.connectionState);
+      };
+
+      peerConnection.onsignalingstatechange = () => {
+        console.log("SIGNALING STATE:", peerConnection.signalingState);
+      };
 
       peerConnection.ontrack = (event) => {
+        console.log("REMOTE TRACK RECEIVED:", {
+          kind: event.track.kind,
+          enabled: event.track.enabled,
+          muted: event.track.muted,
+          readyState: event.track.readyState,
+        });
+
+        event.track.onunmute = () => {
+          console.log("REMOTE TRACK UNMUTED");
+        };
+
+        event.track.onmute = () => {
+          console.log("REMOTE TRACK MUTED");
+        };
+
         const audio = new Audio();
 
         audio.srcObject = event.streams[0];
 
-        audio.play().catch((error) => {
-          console.error("Failed to play remote audio:", error);
+        audio.onplaying = () => {
+          console.log("AUDIO ELEMENT PLAYING");
+        };
+
+        audio.onpause = () => {
+          console.log("AUDIO ELEMENT PAUSED");
+        };
+
+        audio.onended = () => {
+          console.log("AUDIO ELEMENT ENDED");
+        };
+
+        audio.onerror = (event) => {
+          console.error("AUDIO ELEMENT ERROR:", event);
+        };
+
+        console.log("AUDIO ELEMENT CREATED:", {
+          volume: audio.volume,
+          muted: audio.muted,
+          paused: audio.paused,
         });
+
+        audio
+          .play()
+          .then(() => {
+            console.log("AUDIO PLAY SUCCESS");
+          })
+          .catch((error) => {
+            console.error("AUDIO PLAY ERROR:", error);
+          });
       };
 
       peerConnection.onicecandidate = (event) => {
@@ -198,25 +286,41 @@ function ChatWindow({ conversation, currentUser, onBack }) {
         sendWebRTCIceCandidate(callerId, event.candidate);
       };
 
+      console.log("SETTING REMOTE DESCRIPTION");
+
       await peerConnection.setRemoteDescription(offer);
 
-      for (const candidate of pendingIceCandidatesRef.current) {
-        await peerConnection.addIceCandidate(candidate);
-      }
+      console.log("REMOTE DESCRIPTION SET:", peerConnection.remoteDescription);
 
-      pendingIceCandidatesRef.current = [];
+      console.log("REQUESTING MICROPHONE");
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });
 
+      console.log("MICROPHONE STREAM:", {
+        id: stream.id,
+        active: stream.active,
+        tracks: stream.getTracks().map((track) => ({
+          kind: track.kind,
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+        })),
+      });
+
       for (const track of stream.getTracks()) {
+        console.log("ADDING LOCAL TRACK:", track);
         peerConnection.addTrack(track, stream);
       }
 
       const answer = await peerConnection.createAnswer();
 
+      console.log("ANSWER CREATED:", answer);
+
       await peerConnection.setLocalDescription(answer);
+
+      console.log("LOCAL DESCRIPTION SET:", peerConnection.localDescription);
 
       sendWebRTCAnswer(callerId, answer);
     },
@@ -234,18 +338,26 @@ function ChatWindow({ conversation, currentUser, onBack }) {
   }, []);
 
   const handleWebRTCIceCandidate = useCallback(async (candidate) => {
+    console.log("REMOTE ICE CANDIDATE RECEIVED:", candidate);
+
     const peerConnection = peerConnectionRef.current;
 
     if (!peerConnection) {
+      console.log("ICE CANDIDATE DROPPED: NO PEER CONNECTION");
       return;
     }
 
     if (!peerConnection.remoteDescription) {
+      console.log("ICE CANDIDATE QUEUED: NO REMOTE DESCRIPTION");
       pendingIceCandidatesRef.current.push(candidate);
       return;
     }
 
+    console.log("ADDING REMOTE ICE CANDIDATE");
+
     await peerConnection.addIceCandidate(candidate);
+
+    console.log("REMOTE ICE CANDIDATE ADDED");
   }, []);
 
   useEffect(() => {
@@ -486,15 +598,88 @@ function ChatWindow({ conversation, currentUser, onBack }) {
         });
 
         peerConnectionRef.current = peerConnection;
+        console.log("CALL ACCEPTED: peer connection created");
+
+        peerConnection.onicecandidate = (event) => {
+          if (!event.candidate) {
+            console.log("ICE CANDIDATE GATHERING COMPLETE");
+            return;
+          }
+
+          console.log("LOCAL ICE CANDIDATE:", event.candidate);
+
+          sendWebRTCIceCandidate(otherUserId, event.candidate);
+        };
+
+        peerConnection.onicegatheringstatechange = () => {
+          console.log("ICE GATHERING STATE:", peerConnection.iceGatheringState);
+        };
+
+        peerConnection.oniceconnectionstatechange = () => {
+          console.log(
+            "ICE CONNECTION STATE:",
+            peerConnection.iceConnectionState,
+          );
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+          console.log("PEER CONNECTION STATE:", peerConnection.connectionState);
+        };
+
+        peerConnection.onsignalingstatechange = () => {
+          console.log("SIGNALING STATE:", peerConnection.signalingState);
+        };
 
         peerConnection.ontrack = (event) => {
+          console.log("REMOTE TRACK RECEIVED:", {
+            kind: event.track.kind,
+            enabled: event.track.enabled,
+            muted: event.track.muted,
+            readyState: event.track.readyState,
+          });
+
+          event.track.onunmute = () => {
+            console.log("REMOTE TRACK UNMUTED");
+          };
+
+          event.track.onmute = () => {
+            console.log("REMOTE TRACK MUTED");
+          };
+
           const audio = new Audio();
 
           audio.srcObject = event.streams[0];
 
-          audio.play().catch((error) => {
-            console.error("Failed to play remote audio:", error);
+          audio.onplaying = () => {
+            console.log("AUDIO ELEMENT PLAYING");
+          };
+
+          audio.onpause = () => {
+            console.log("AUDIO ELEMENT PAUSED");
+          };
+
+          audio.onended = () => {
+            console.log("AUDIO ELEMENT ENDED");
+          };
+
+          audio.onerror = (event) => {
+            console.error("AUDIO ELEMENT ERROR:", event);
+          };
+
+          console.log("AUDIO ELEMENT CREATED:", {
+            volume: audio.volume,
+            muted: audio.muted,
+            paused: audio.paused,
           });
+
+          audio
+            .play()
+            .then(() => {
+              console.log("AUDIO PLAY SUCCESS");
+            })
+            .catch((error) => {
+              console.error("AUDIO PLAY ERROR:", error);
+            });
         };
 
         peerConnection.onicecandidate = (event) => {

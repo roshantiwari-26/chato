@@ -617,6 +617,11 @@ function ChatWindow({ conversation, currentUser, onBack }) {
       }
 
       case "call.accepted": {
+        const { receiverId } = lastMessage.payload;
+
+        if (receiverId !== otherUserId) {
+          break;
+        }
         try {
           pendingIceCandidatesRef.current = [];
 

@@ -188,6 +188,7 @@ function ChatWindow({ conversation, currentUser, onBack }) {
 
   const handleWebRTCOffer = useCallback(
     async (callerId, offer) => {
+      console.log("HANDLE WEBRTC OFFER STARTED");
       try {
         const peerConnection = new RTCPeerConnection({
           iceServers: [
@@ -715,7 +716,10 @@ function ChatWindow({ conversation, currentUser, onBack }) {
 
       case "webrtc.offer": {
         const { callerId, offer } = lastMessage.payload;
-
+        console.log("WEBRTC OFFER EVENT RECEIVED:", {
+          callerId,
+          offer,
+        });
         handleWebRTCOffer(callerId, offer);
 
         break;

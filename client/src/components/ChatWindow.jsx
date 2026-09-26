@@ -188,141 +188,142 @@ function ChatWindow({ conversation, currentUser, onBack }) {
 
   const handleWebRTCOffer = useCallback(
     async (callerId, offer) => {
-      const peerConnection = new RTCPeerConnection({
-        iceServers: [
-          {
-            urls: "stun:stun.l.google.com:19302",
-          },
-        ],
-      });
+      try {
+        pendingIceCandidatesRef.current = [];
 
-      peerConnectionRef.current = peerConnection;
-      console.log("WEBRTC OFFER RECEIVED: peer connection created");
-
-      peerConnection.onicecandidate = (event) => {
-        if (!event.candidate) {
-          console.log("ICE CANDIDATE GATHERING COMPLETE");
-          return;
-        }
-
-        console.log("LOCAL ICE CANDIDATE:", event.candidate);
-
-        sendWebRTCIceCandidate(callerId, event.candidate);
-      };
-
-      peerConnection.onicegatheringstatechange = () => {
-        console.log("ICE GATHERING STATE:", peerConnection.iceGatheringState);
-      };
-
-      peerConnection.oniceconnectionstatechange = () => {
-        console.log("ICE CONNECTION STATE:", peerConnection.iceConnectionState);
-      };
-
-      peerConnection.onconnectionstatechange = () => {
-        console.log("PEER CONNECTION STATE:", peerConnection.connectionState);
-      };
-
-      peerConnection.onsignalingstatechange = () => {
-        console.log("SIGNALING STATE:", peerConnection.signalingState);
-      };
-
-      peerConnection.ontrack = (event) => {
-        console.log("REMOTE TRACK RECEIVED:", {
-          kind: event.track.kind,
-          enabled: event.track.enabled,
-          muted: event.track.muted,
-          readyState: event.track.readyState,
+        const peerConnection = new RTCPeerConnection({
+          iceServers: [
+            {
+              urls: "stun:stun.l.google.com:19302",
+            },
+          ],
         });
 
-        event.track.onunmute = () => {
-          console.log("REMOTE TRACK UNMUTED");
+        peerConnectionRef.current = peerConnection;
+
+        console.log("WEBRTC OFFER RECEIVED: peer connection created");
+
+        peerConnection.onicecandidate = (event) => {
+          if (!event.candidate) {
+            console.log("ICE CANDIDATE GATHERING COMPLETE");
+            return;
+          }
+
+          console.log("LOCAL ICE CANDIDATE:", event.candidate);
+
+          sendWebRTCIceCandidate(callerId, event.candidate);
         };
 
-        event.track.onmute = () => {
-          console.log("REMOTE TRACK MUTED");
+        peerConnection.onicegatheringstatechange = () => {
+          console.log("ICE GATHERING STATE:", peerConnection.iceGatheringState);
         };
 
-        const audio = new Audio();
-
-        audio.srcObject = event.streams[0];
-
-        audio.onplaying = () => {
-          console.log("AUDIO ELEMENT PLAYING");
+        peerConnection.oniceconnectionstatechange = () => {
+          console.log(
+            "ICE CONNECTION STATE:",
+            peerConnection.iceConnectionState,
+          );
         };
 
-        audio.onpause = () => {
-          console.log("AUDIO ELEMENT PAUSED");
+        peerConnection.onconnectionstatechange = () => {
+          console.log("PEER CONNECTION STATE:", peerConnection.connectionState);
         };
 
-        audio.onended = () => {
-          console.log("AUDIO ELEMENT ENDED");
+        peerConnection.onsignalingstatechange = () => {
+          console.log("SIGNALING STATE:", peerConnection.signalingState);
         };
 
-        audio.onerror = (event) => {
-          console.error("AUDIO ELEMENT ERROR:", event);
-        };
-
-        console.log("AUDIO ELEMENT CREATED:", {
-          volume: audio.volume,
-          muted: audio.muted,
-          paused: audio.paused,
-        });
-
-        audio
-          .play()
-          .then(() => {
-            console.log("AUDIO PLAY SUCCESS");
-          })
-          .catch((error) => {
-            console.error("AUDIO PLAY ERROR:", error);
+        peerConnection.ontrack = (event) => {
+          console.log("REMOTE TRACK RECEIVED:", {
+            kind: event.track.kind,
+            enabled: event.track.enabled,
+            muted: event.track.muted,
+            readyState: event.track.readyState,
           });
-      };
 
-      peerConnection.onicecandidate = (event) => {
-        if (!event.candidate) {
-          return;
+          event.track.onunmute = () => {
+            console.log("REMOTE TRACK UNMUTED");
+          };
+
+          event.track.onmute = () => {
+            console.log("REMOTE TRACK MUTED");
+          };
+
+          const audio = new Audio();
+
+          audio.srcObject = event.streams[0];
+
+          audio.onplaying = () => {
+            console.log("AUDIO ELEMENT PLAYING");
+          };
+
+          audio.onerror = (event) => {
+            console.error("AUDIO ELEMENT ERROR:", event);
+          };
+
+          audio
+            .play()
+            .then(() => {
+              console.log("AUDIO PLAY SUCCESS");
+            })
+            .catch((error) => {
+              console.error("AUDIO PLAY ERROR:", error);
+            });
+        };
+
+        console.log("SETTING REMOTE DESCRIPTION");
+
+        await peerConnection.setRemoteDescription(offer);
+
+        console.log(
+          "REMOTE DESCRIPTION SET:",
+          peerConnection.remoteDescription,
+        );
+
+        for (const candidate of pendingIceCandidatesRef.current) {
+          console.log("ADDING QUEUED ICE CANDIDATE");
+
+          await peerConnection.addIceCandidate(candidate);
+
+          console.log("QUEUED ICE CANDIDATE ADDED");
         }
 
-        sendWebRTCIceCandidate(callerId, event.candidate);
-      };
+        pendingIceCandidatesRef.current = [];
 
-      console.log("SETTING REMOTE DESCRIPTION");
+        console.log("REQUESTING MICROPHONE");
 
-      await peerConnection.setRemoteDescription(offer);
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
 
-      console.log("REMOTE DESCRIPTION SET:", peerConnection.remoteDescription);
+        console.log("MICROPHONE STREAM:", {
+          id: stream.id,
+          active: stream.active,
+          tracks: stream.getTracks().map((track) => ({
+            kind: track.kind,
+            enabled: track.enabled,
+            muted: track.muted,
+            readyState: track.readyState,
+          })),
+        });
 
-      console.log("REQUESTING MICROPHONE");
+        for (const track of stream.getTracks()) {
+          console.log("ADDING LOCAL TRACK:", track);
+          peerConnection.addTrack(track, stream);
+        }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
+        const answer = await peerConnection.createAnswer();
 
-      console.log("MICROPHONE STREAM:", {
-        id: stream.id,
-        active: stream.active,
-        tracks: stream.getTracks().map((track) => ({
-          kind: track.kind,
-          enabled: track.enabled,
-          muted: track.muted,
-          readyState: track.readyState,
-        })),
-      });
+        console.log("ANSWER CREATED:", answer);
 
-      for (const track of stream.getTracks()) {
-        console.log("ADDING LOCAL TRACK:", track);
-        peerConnection.addTrack(track, stream);
+        await peerConnection.setLocalDescription(answer);
+
+        console.log("LOCAL DESCRIPTION SET:", peerConnection.localDescription);
+
+        sendWebRTCAnswer(callerId, answer);
+      } catch (error) {
+        console.error("WEBRTC OFFER HANDLING ERROR:", error);
       }
-
-      const answer = await peerConnection.createAnswer();
-
-      console.log("ANSWER CREATED:", answer);
-
-      await peerConnection.setLocalDescription(answer);
-
-      console.log("LOCAL DESCRIPTION SET:", peerConnection.localDescription);
-
-      sendWebRTCAnswer(callerId, answer);
     },
     [sendWebRTCIceCandidate, sendWebRTCAnswer],
   );
@@ -331,10 +332,19 @@ function ChatWindow({ conversation, currentUser, onBack }) {
     const peerConnection = peerConnectionRef.current;
 
     if (!peerConnection) {
+      console.log("ANSWER IGNORED: NO PEER CONNECTION");
       return;
     }
 
-    await peerConnection.setRemoteDescription(answer);
+    try {
+      console.log("SETTING REMOTE ANSWER");
+
+      await peerConnection.setRemoteDescription(answer);
+
+      console.log("REMOTE ANSWER SET:", peerConnection.remoteDescription);
+    } catch (error) {
+      console.error("FAILED TO SET REMOTE ANSWER:", error);
+    }
   }, []);
 
   const handleWebRTCIceCandidate = useCallback(async (candidate) => {
@@ -343,21 +353,30 @@ function ChatWindow({ conversation, currentUser, onBack }) {
     const peerConnection = peerConnectionRef.current;
 
     if (!peerConnection) {
-      console.log("ICE CANDIDATE DROPPED: NO PEER CONNECTION");
+      console.log("ICE CANDIDATE QUEUED: NO PEER CONNECTION");
+
+      pendingIceCandidatesRef.current.push(candidate);
+
       return;
     }
 
     if (!peerConnection.remoteDescription) {
       console.log("ICE CANDIDATE QUEUED: NO REMOTE DESCRIPTION");
+
       pendingIceCandidatesRef.current.push(candidate);
+
       return;
     }
 
-    console.log("ADDING REMOTE ICE CANDIDATE");
+    try {
+      console.log("ADDING REMOTE ICE CANDIDATE");
 
-    await peerConnection.addIceCandidate(candidate);
+      await peerConnection.addIceCandidate(candidate);
 
-    console.log("REMOTE ICE CANDIDATE ADDED");
+      console.log("REMOTE ICE CANDIDATE ADDED");
+    } catch (error) {
+      console.error("FAILED TO ADD REMOTE ICE CANDIDATE:", error);
+    }
   }, []);
 
   useEffect(() => {
@@ -589,108 +608,100 @@ function ChatWindow({ conversation, currentUser, onBack }) {
       }
 
       case "call.accepted": {
-        const peerConnection = new RTCPeerConnection({
-          iceServers: [
-            {
-              urls: "stun:stun.l.google.com:19302",
-            },
-          ],
-        });
+        try {
+          pendingIceCandidatesRef.current = [];
 
-        peerConnectionRef.current = peerConnection;
-        console.log("CALL ACCEPTED: peer connection created");
-
-        peerConnection.onicecandidate = (event) => {
-          if (!event.candidate) {
-            console.log("ICE CANDIDATE GATHERING COMPLETE");
-            return;
-          }
-
-          console.log("LOCAL ICE CANDIDATE:", event.candidate);
-
-          sendWebRTCIceCandidate(otherUserId, event.candidate);
-        };
-
-        peerConnection.onicegatheringstatechange = () => {
-          console.log("ICE GATHERING STATE:", peerConnection.iceGatheringState);
-        };
-
-        peerConnection.oniceconnectionstatechange = () => {
-          console.log(
-            "ICE CONNECTION STATE:",
-            peerConnection.iceConnectionState,
-          );
-        };
-
-        peerConnection.onconnectionstatechange = () => {
-          console.log("PEER CONNECTION STATE:", peerConnection.connectionState);
-        };
-
-        peerConnection.onsignalingstatechange = () => {
-          console.log("SIGNALING STATE:", peerConnection.signalingState);
-        };
-
-        peerConnection.ontrack = (event) => {
-          console.log("REMOTE TRACK RECEIVED:", {
-            kind: event.track.kind,
-            enabled: event.track.enabled,
-            muted: event.track.muted,
-            readyState: event.track.readyState,
+          const peerConnection = new RTCPeerConnection({
+            iceServers: [
+              {
+                urls: "stun:stun.l.google.com:19302",
+              },
+            ],
           });
 
-          event.track.onunmute = () => {
-            console.log("REMOTE TRACK UNMUTED");
+          peerConnectionRef.current = peerConnection;
+
+          console.log("CALL ACCEPTED: peer connection created");
+
+          peerConnection.onicecandidate = (event) => {
+            if (!event.candidate) {
+              console.log("ICE CANDIDATE GATHERING COMPLETE");
+              return;
+            }
+
+            console.log("LOCAL ICE CANDIDATE:", event.candidate);
+
+            sendWebRTCIceCandidate(otherUserId, event.candidate);
           };
 
-          event.track.onmute = () => {
-            console.log("REMOTE TRACK MUTED");
+          peerConnection.onicegatheringstatechange = () => {
+            console.log(
+              "ICE GATHERING STATE:",
+              peerConnection.iceGatheringState,
+            );
           };
 
-          const audio = new Audio();
-
-          audio.srcObject = event.streams[0];
-
-          audio.onplaying = () => {
-            console.log("AUDIO ELEMENT PLAYING");
+          peerConnection.oniceconnectionstatechange = () => {
+            console.log(
+              "ICE CONNECTION STATE:",
+              peerConnection.iceConnectionState,
+            );
           };
 
-          audio.onpause = () => {
-            console.log("AUDIO ELEMENT PAUSED");
+          peerConnection.onconnectionstatechange = () => {
+            console.log(
+              "PEER CONNECTION STATE:",
+              peerConnection.connectionState,
+            );
           };
 
-          audio.onended = () => {
-            console.log("AUDIO ELEMENT ENDED");
+          peerConnection.onsignalingstatechange = () => {
+            console.log("SIGNALING STATE:", peerConnection.signalingState);
           };
 
-          audio.onerror = (event) => {
-            console.error("AUDIO ELEMENT ERROR:", event);
-          };
-
-          console.log("AUDIO ELEMENT CREATED:", {
-            volume: audio.volume,
-            muted: audio.muted,
-            paused: audio.paused,
-          });
-
-          audio
-            .play()
-            .then(() => {
-              console.log("AUDIO PLAY SUCCESS");
-            })
-            .catch((error) => {
-              console.error("AUDIO PLAY ERROR:", error);
+          peerConnection.ontrack = (event) => {
+            console.log("REMOTE TRACK RECEIVED:", {
+              kind: event.track.kind,
+              enabled: event.track.enabled,
+              muted: event.track.muted,
+              readyState: event.track.readyState,
             });
-        };
 
-        peerConnection.onicecandidate = (event) => {
-          if (!event.candidate) {
-            return;
-          }
+            event.track.onunmute = () => {
+              console.log("REMOTE TRACK UNMUTED");
+            };
 
-          sendWebRTCIceCandidate(otherUserId, event.candidate);
-        };
+            event.track.onmute = () => {
+              console.log("REMOTE TRACK MUTED");
+            };
 
-        createCallOffer();
+            const audio = new Audio();
+
+            audio.srcObject = event.streams[0];
+
+            audio.onplaying = () => {
+              console.log("AUDIO ELEMENT PLAYING");
+            };
+
+            audio.onerror = (event) => {
+              console.error("AUDIO ELEMENT ERROR:", event);
+            };
+
+            audio
+              .play()
+              .then(() => {
+                console.log("AUDIO PLAY SUCCESS");
+              })
+              .catch((error) => {
+                console.error("AUDIO PLAY ERROR:", error);
+              });
+          };
+
+          createCallOffer();
+        } catch (error) {
+          console.error("CALL ACCEPTED ERROR:", error);
+        }
+
         break;
       }
 

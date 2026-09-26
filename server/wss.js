@@ -657,7 +657,6 @@ function initializeWebSocket(server) {
         }
 
         if (data.type === "webrtc.offer") {
-          console.log("WebRTC offer received by server:", data.payload);
           const { receiverId, offer } = data.payload || {};
 
           if (!isValidObjectId(receiverId) || !offer) {

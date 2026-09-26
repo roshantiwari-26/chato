@@ -157,24 +157,12 @@ function ChatWindow({ conversation, currentUser, onBack }) {
     });
 
     for (const track of stream.getTracks()) {
-      console.log("Adding local track:", {
-        kind: track.kind,
-        enabled: track.enabled,
-        muted: track.muted,
-        readyState: track.readyState,
-      });
-
       peerConnection.addTrack(track, stream);
     }
 
     const offer = await peerConnection.createOffer();
 
     await peerConnection.setLocalDescription(offer);
-
-    console.log(
-      "ICE gathering state after local description:",
-      peerConnection.iceGatheringState,
-    );
 
     sendWebRTCOffer(otherUserId, offer);
   }, [otherUserId, sendWebRTCOffer]);
@@ -192,28 +180,13 @@ function ChatWindow({ conversation, currentUser, onBack }) {
       peerConnectionRef.current = peerConnection;
 
       peerConnection.ontrack = (event) => {
-        console.log("Remote track received:", event.track);
-
-        event.track.onmute = () => {
-          console.log("Remote track muted");
-        };
-
-        event.track.onunmute = () => {
-          console.log("Remote track unmuted");
-        };
-
         const audio = new Audio();
 
         audio.srcObject = event.streams[0];
 
-        audio
-          .play()
-          .then(() => {
-            console.log("Remote audio playback started");
-          })
-          .catch((error) => {
-            console.error("Failed to play remote audio:", error);
-          });
+        audio.play().catch((error) => {
+          console.error("Failed to play remote audio:", error);
+        });
       };
 
       peerConnection.onicecandidate = (event) => {
@@ -224,23 +197,21 @@ function ChatWindow({ conversation, currentUser, onBack }) {
         sendWebRTCIceCandidate(callerId, event.candidate);
       };
 
-      peerConnection.oniceconnectionstatechange = () => {
-        console.log("ICE connection state:", peerConnection.iceConnectionState);
-      };
-
       await peerConnection.setRemoteDescription(offer);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+
+      for (const track of stream.getTracks()) {
+        peerConnection.addTrack(track, stream);
+      }
 
       const answer = await peerConnection.createAnswer();
 
       await peerConnection.setLocalDescription(answer);
 
-      console.log("Created answer:", answer);
-
       sendWebRTCAnswer(callerId, answer);
-
-      peerConnection.onconnectionstatechange = () => {
-        console.log("Connection state:", peerConnection.connectionState);
-      };
     },
     [sendWebRTCIceCandidate, sendWebRTCAnswer],
   );
@@ -253,8 +224,6 @@ function ChatWindow({ conversation, currentUser, onBack }) {
     }
 
     await peerConnection.setRemoteDescription(answer);
-
-    console.log("Remote answer set:", answer);
   }, []);
 
   const handleWebRTCIceCandidate = useCallback(async (candidate) => {
@@ -265,8 +234,6 @@ function ChatWindow({ conversation, currentUser, onBack }) {
     }
 
     await peerConnection.addIceCandidate(candidate);
-
-    console.log("ICE candidate added:", candidate);
   }, []);
 
   useEffect(() => {
@@ -338,8 +305,6 @@ function ChatWindow({ conversation, currentUser, onBack }) {
     }
 
     const { type, payload } = lastMessage;
-
-    console.log("WS event received:", lastMessage);
 
     if (!payload) {
       return;
@@ -490,8 +455,6 @@ function ChatWindow({ conversation, currentUser, onBack }) {
       }
 
       case "call.incoming": {
-        console.log("Incoming call:", lastMessage.payload);
-
         setIncomingCall(lastMessage.payload);
         break;
       }
@@ -520,25 +483,7 @@ function ChatWindow({ conversation, currentUser, onBack }) {
           sendWebRTCIceCandidate(otherUserId, event.candidate);
         };
 
-        peerConnection.onicegatheringstatechange = () => {
-          console.log("ICE gathering state:", peerConnection.iceGatheringState);
-        };
-
-        peerConnection.oniceconnectionstatechange = () => {
-          console.log(
-            "ICE connection state:",
-            peerConnection.iceConnectionState,
-          );
-        };
-
-        peerConnection.onconnectionstatechange = () => {
-          console.log("Connection state:", peerConnection.connectionState);
-        };
-
         createCallOffer();
-
-        console.log("Peer connection created:", peerConnection);
-
         break;
       }
 

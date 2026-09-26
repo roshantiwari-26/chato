@@ -216,11 +216,6 @@ function useWebSocket(activeConversationId) {
 
   const sendWebRTCOffer = useCallback(
     (receiverId, offer) => {
-      console.log("Sending WebRTC offer:", {
-        receiverId,
-        offer,
-      });
-
       return send({
         type: "webrtc.offer",
         payload: {
